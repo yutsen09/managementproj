@@ -745,29 +745,164 @@
                 this.render();
             }
 
+            // 全靜態純前端模擬連線（免 Python 後端與真實資料庫）
             async apiCall(url, options = {}) {
-                options.credentials = 'include';
-                try {
-                    const response = await fetch(url, options);
-                    const data = await response.json();
-                    if (!response.ok) {
-                        if (data.needsPasswordChange) {
-                            this.currentUser = { needsPasswordChange: true };
-                            this.currentView = 'changePassword';
-                            this.render();
-                        }
-                        throw new Error(data.error || '請求錯誤');
-                    }
-                    return data;
-                } catch (err) {
-                    console.error("API Call Error:", err);
-                    if (err.message !== '未登入') {
-                        this.showMessage(err.message || '連線伺服器失敗');
-                    }
-                    throw err;
+                // 初始化瀏覽器的本地模擬資料庫（localStorage）
+                if (!localStorage.getItem('users_db')) {
+                    localStorage.setItem('users_db', JSON.stringify([
+                        {id: 1, email: 'applicant@company.com', password: '123456', name: '王明', last_name: '王', first_name: '明', gender: 'M', role: 'applicant', budget: 1000.0, current_quota: 1000.0, spent: 0, status: '啟用', failCount: 0},
+                        {id: 2, email: 'manager@company.com', password: '123456', name: '李經理', last_name: '李', first_name: '經理', gender: 'M', role: 'manager', budget: 50000.0, current_quota: 50000.0, spent: 0, status: '啟用', failCount: 0},
+                        {id: 3, email: 'admin@company.com', password: '123456', name: '陳管理員', last_name: '陳', first_name: '管理員', gender: 'M', role: 'admin', budget: 100000.0, current_quota: 100000.0, spent: 0, status: '啟用', failCount: 0}
+                    ]));
                 }
-            }
+                if (!localStorage.getItem('reports_db')) {
+                    localStorage.setItem('reports_db', JSON.stringify([
+                        {id: 1, applicantId: 1, applicantName: '王明', amount: 450.0, date: '2024-01-15', category: '辦公用品', department: '研發部', status: '已通過', description: '列印紙張', createdAt: '2024-01-16 10:00:00', fileName: null, fileUrl: null}
+                    ]));
+                }
 
+                const users = JSON.parse(localStorage.getItem('users_db'));
+                const reports = JSON.parse(localStorage.getItem('reports_db'));
+
+                // 1. 模擬獲取當前登入者狀態
+                if (url === '/api/user-info') {
+                    const sessionUser = JSON.parse(sessionStorage.getItem('current_user'));
+                    if (!sessionUser) throw new Error('未登入');
+                    const updated = users.find(u => u.id === sessionUser.id);
+                    return updated;
+                }
+
+                // 2. 模擬登入 API
+                if (url === '/api/login' && options.method === 'POST') {
+                    const body = JSON.parse(options.body);
+                    const user = users.find(u => u.email === body.email && u.password === body.password);
+                    if (!user) throw new Error('電子郵件或密碼錯誤');
+                    if (user.status === '已註銷') throw new Error('該帳號已註銷');
+                    sessionStorage.setItem('current_user', JSON.stringify(user));
+                    return { message: "登入成功", user: user, needsPasswordChange: false };
+                }
+
+                // 3. 模擬登出 API
+                if (url === '/api/logout') {
+                    sessionStorage.removeItem('current_user');
+                    return { message: "已成功登出" };
+                }
+
+                // 4. 模擬獲取報帳清單 API
+                if (url === '/api/reports' && (!options.method || options.method === 'GET')) {
+                    const sessionUser = JSON.parse(sessionStorage.getItem('current_user'));
+                    if (sessionUser.role === 'applicant') {
+                        return reports.filter(r => r.applicantId === sessionUser.id);
+                    }
+                    return reports;
+                }
+
+                // 5. 模擬提交新報帳單 API
+                if (url === '/api/reports' && options.method === 'POST') {
+                    const sessionUser = JSON.parse(sessionStorage.getItem('current_user'));
+                    const formData = options.body; // 這邊抓取傳入的物件
+                    const amount = parseFloat(formData.amount || 0);
+                    
+                    const isAutoApproved = (amount <= 1000) && (sessionUser.current_quota >= amount);
+                    const newStatus = isAutoApproved ? '已通過' : '審核中';
+
+                    const newReport = {
+                        id: reports.length + 1,
+                        applicantId: sessionUser.id,
+                        applicantName: sessionUser.name,
+                        amount: amount,
+                        date: formData.date || new Date().toISOString().split('T')[0],
+                        category: formData.category || '其他',
+                        department: formData.department || '未知部門',
+                        status: newStatus,
+                        description: formData.description || '',
+                        createdAt: new Date().toLocaleString(),
+                        fileName: formData.file ? formData.file.name : null,
+                        fileUrl: null
+                    };
+
+                    reports.unshift(newReport);
+                    localStorage.setItem('reports_db', JSON.stringify(reports));
+
+                    if (isAutoApproved) {
+                        const targetUser = users.find(u => u.id === sessionUser.id);
+                        targetUser.current_quota -= amount;
+                        targetUser.spent += amount;
+                        localStorage.setItem('users_db', JSON.stringify(users));
+                    }
+
+                    return { message: isAutoApproved ? '報告已自動通過' : '報告已提交等待審批', reportId: newReport.id, status: newStatus };
+                }
+
+                // 6. 模擬獲取待審核清單 API
+                if (url === '/api/reports/pending') {
+                    return reports.filter(r => r.status === '審核中');
+                }
+
+                // 7. 模擬審核通過 API
+                if (url.match(/\/api\/reports\/\d+\/approve/)) {
+                    const reportId = parseInt(url.split('/')[3]);
+                    const body = JSON.parse(options.body || '{}');
+                    const rep = reports.find(r => r.id === reportId);
+                    if (rep) {
+                        rep.status = '已通過';
+                        localStorage.setItem('reports_db', JSON.stringify(reports));
+                        
+                        // 同時扣減申請者額度
+                        const applicant = users.find(u => u.id === rep.applicantId);
+                        if (applicant) {
+                            applicant.current_quota -= rep.amount;
+                            applicant.spent += rep.amount;
+                            localStorage.setItem('users_db', JSON.stringify(users));
+                        }
+                    }
+                    return { message: "申請已核准通過" };
+                }
+
+                // 8. 模擬審核退回 API
+                if (url.match(/\/api\/reports\/\d+\/reject/)) {
+                    const reportId = parseInt(url.split('/')[3]);
+                    const rep = reports.find(r => r.id === reportId);
+                    if (rep) {
+                        rep.status = '已退回';
+                        localStorage.setItem('reports_db', JSON.stringify(reports));
+                    }
+                    return { message: "申請已成功退回" };
+                }
+
+                // 9. 模擬用戶管理列表 API
+                if (url === '/api/users') {
+                    return users;
+                }
+
+                // 10. 模擬註銷帳號 API
+                if (url.match(/\/api\/users\/\d+/)) {
+                    const userId = parseInt(url.split('/')[3]);
+                    const targetUser = users.find(u => u.id === userId);
+                    if (targetUser) {
+                        targetUser.status = '已註銷';
+                        localStorage.setItem('users_db', JSON.stringify(users));
+                    }
+                    return { message: "用戶帳號已註銷" };
+                }
+
+                // 11. 模擬數據分析 API
+                if (url === '/api/analytics') {
+                    const totalAmount = reports.reduce((sum, r) => sum + r.amount, 0);
+                    const categoryTotal = {};
+                    reports.forEach(r => {
+                        categoryTotal[r.category] = (categoryTotal[r.category] || 0) + r.amount;
+                    });
+                    return {
+                        totalAmount: totalAmount,
+                        reportCount: reports.length,
+                        averageAmount: reports.length > 0 ? (totalAmount / reports.length) : 0,
+                        categoryTotal: categoryTotal
+                    };
+                }
+
+                throw new Error('未知的 API 請求路徑');
+            }
             async navigateTo(view) {
                 this.currentView = view;
                 await this.loadDataForView(view);
