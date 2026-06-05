@@ -191,9 +191,20 @@ def init_db():
 init_db()
 
 # ============ 輔助函數 ============
+import psycopg2
+from psycopg2.extras import RealDictCursor
+
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    # 優先讀取 Render 雲端環境變數，若本機測試則使用後方的 Supabase 連線網址
+    db_url = os.environ.get("DATABASE_URL", "postgresql://postgres:[guanlixue0609]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres")
+
+    # 修正部分平台不支援 postgres:// 開頭的問題
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+
+    conn = psycopg2.connect(db_url)
+    # 讓 Postgres 回傳的資料格式等同於原本 SQLite 的 Row dict 格式
+    conn.cursor_factory = RealDictCursor
     return conn
 
 def check_ip_locked(ip_address):
