@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能報帳系統</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
@@ -524,34 +525,49 @@
         .inline-captcha-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 6px;
+            gap: 8px;
         }
 
         .inline-captcha-item {
             position: relative;
             aspect-ratio: 1;
-            border-radius: 6px;
-            overflow: hidden;
+            border-radius: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            border: 2px solid transparent;
             transition: all 0.2s ease;
             user-select: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
         }
 
-        .inline-captcha-item img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.3s ease;
+        .inline-captcha-item i {
+            font-size: 32px;
+            color: var(--primary-dark);
+            transition: color 0.2s, transform 0.2s;
         }
 
-        .inline-captcha-item:hover img {
-            transform: scale(1.08);
+        .inline-captcha-item:hover {
+            transform: scale(1.05);
+            border-color: var(--primary-color);
+            background: var(--bg-secondary);
+        }
+
+        .inline-captcha-item:hover i {
+            color: var(--primary-color);
+            transform: scale(1.1);
         }
 
         .inline-captcha-item.selected {
             border-color: var(--primary-color);
+            background: rgba(219, 146, 110, 0.08);
             transform: scale(0.96);
+        }
+
+        .inline-captcha-item.selected i {
+            color: var(--primary-color);
         }
 
         .inline-captcha-item.selected::after {
@@ -571,14 +587,6 @@
             font-weight: bold;
             box-shadow: 0 1px 3px rgba(0,0,0,0.2);
             z-index: 2;
-        }
-
-        .inline-captcha-item.selected::before {
-            content: "";
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(219, 146, 110, 0.15);
-            z-index: 1;
         }
 
         .inline-captcha-footer {
@@ -692,38 +700,28 @@
                 this.captchaTargetKey = '';
                 this.captchaGrid = [];
 
-                // 內建 Unsplash 高清圖片池 (包含五大類別：腳踏車、汽車、紅綠燈、摩托車、巴士)
+                // 內建圖標池 (Font Awesome Icons)
                 this.captchaImagePool = [
                     // 腳踏車 (bicycle)
-                    { id: 101, category: 'bicycle', url: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=200&auto=format&fit=crop&q=60' },
-                    { id: 102, category: 'bicycle', url: 'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=200&auto=format&fit=crop&q=60' },
-                    { id: 103, category: 'bicycle', url: 'https://images.unsplash.com/photo-1552993873-0dd1110e025f?w=200&auto=format&fit=crop&q=60' },
-                    { id: 104, category: 'bicycle', url: 'https://images.unsplash.com/photo-1582556103222-69d09785392a?w=200&auto=format&fit=crop&q=60' },
-                    { id: 105, category: 'bicycle', url: 'https://images.unsplash.com/photo-1608393508049-40db8711fbd1?w=200&auto=format&fit=crop&q=60' },
+                    { id: 101, category: 'bicycle', icon: '<i class="fa-solid fa-bicycle"></i>' },
+                    { id: 102, category: 'bicycle', icon: '<i class="fa-solid fa-bicycle"></i>' },
+                    { id: 103, category: 'bicycle', icon: '<i class="fa-solid fa-bicycle"></i>' },
                     // 汽車 (car)
-                    { id: 201, category: 'car', url: 'https://images.unsplash.com/photo-1605437241278-c1806d14a4d9?w=200&auto=format&fit=crop&q=60' },
-                    { id: 202, category: 'car', url: 'https://images.unsplash.com/photo-1668624712983-b44614cd1a86?w=200&auto=format&fit=crop&q=60' },
-                    { id: 203, category: 'car', url: 'https://images.unsplash.com/photo-1620584899131-a5ff5f8fbb03?w=200&auto=format&fit=crop&q=60' },
-                    { id: 204, category: 'car', url: 'https://images.unsplash.com/photo-1591385048763-4d3471fe0587?w=200&auto=format&fit=crop&q=60' },
-                    { id: 502, category: 'car', url: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=200&auto=format&fit=crop&q=60' },
+                    { id: 201, category: 'car', icon: '<i class="fa-solid fa-car"></i>' },
+                    { id: 202, category: 'car', icon: '<i class="fa-solid fa-car-side"></i>' },
+                    { id: 203, category: 'car', icon: '<i class="fa-solid fa-taxi"></i>' },
+                    { id: 204, category: 'car', icon: '<i class="fa-solid fa-car-side"></i>' },
+                    { id: 205, category: 'car', icon: '<i class="fa-solid fa-car"></i>' },
                     // 紅綠燈 (traffic_light)
-                    { id: 301, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1458169495136-854e4c39548a?w=200&auto=format&fit=crop&q=60' },
-                    { id: 302, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1530652101053-8c0db4fbb5de?w=200&auto=format&fit=crop&q=60' },
-                    { id: 303, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=200&auto=format&fit=crop&q=60' },
-                    { id: 304, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1510511459019-5dda7724fd87?w=200&auto=format&fit=crop&q=60' },
-                    { id: 305, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1674552791148-c756b0899dba?w=200&auto=format&fit=crop&q=60' },
+                    { id: 301, category: 'traffic_light', icon: '<i class="fa-solid fa-traffic-light"></i>' },
+                    { id: 302, category: 'traffic_light', icon: '<i class="fa-solid fa-traffic-light"></i>' },
                     // 摩托車 (motorcycle)
-                    { id: 401, category: 'motorcycle', url: 'https://images.unsplash.com/photo-1558980394-da1f85d3b540?w=200&auto=format&fit=crop&q=60' },
-                    { id: 402, category: 'motorcycle', url: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=200&auto=format&fit=crop&q=60' },
-                    { id: 403, category: 'motorcycle', url: 'https://images.unsplash.com/photo-1558979158-2966a2b43b99?w=200&auto=format&fit=crop&q=60' },
-                    { id: 404, category: 'motorcycle', url: 'https://images.unsplash.com/photo-1558981408-db0ecd8a1ee4?w=200&auto=format&fit=crop&q=60' },
-                    { id: 405, category: 'motorcycle', url: 'https://images.unsplash.com/photo-1558980664-2cd663cf8dde?w=200&auto=format&fit=crop&q=60' },
+                    { id: 401, category: 'motorcycle', icon: '<i class="fa-solid fa-motorcycle"></i>' },
+                    { id: 402, category: 'motorcycle', icon: '<i class="fa-solid fa-motorcycle"></i>' },
                     // 巴士 (bus)
-                    { id: 501, category: 'bus', url: 'https://images.unsplash.com/photo-1529533603088-2333224ac6c5?w=200&auto=format&fit=crop&q=60' },
-                    { id: 205, category: 'bus', url: 'https://images.unsplash.com/photo-1506607541365-d0c9593de494?w=200&auto=format&fit=crop&q=60' },
-                    { id: 503, category: 'bus', url: 'https://images.unsplash.com/photo-1591414828873-e22382dae97d?w=200&auto=format&fit=crop&q=60' },
-                    { id: 504, category: 'bus', url: 'https://images.unsplash.com/photo-1719210699672-287362b89cbd?w=200&auto=format&fit=crop&q=60' },
-                    { id: 505, category: 'bus', url: 'https://images.unsplash.com/photo-1517303650219-83c8b1788c4c?w=200&auto=format&fit=crop&q=60' }
+                    { id: 501, category: 'bus', icon: '<i class="fa-solid fa-bus"></i>' },
+                    { id: 502, category: 'bus', icon: '<i class="fa-solid fa-bus-simple"></i>' },
+                    { id: 503, category: 'bus', icon: '<i class="fa-solid fa-bus"></i>' }
                 ];
 
                 this.users = [];
@@ -834,7 +832,7 @@
                 this.captchaGrid = combined.map((img, idx) => ({
                     index: idx,
                     id: img.id,
-                    url: img.url,
+                    icon: img.icon,
                     category: img.category,
                     selected: false
                 }));
@@ -1183,7 +1181,7 @@
                     });
                 }
 
-                // 驗證圖片點擊選取
+                // 驗證圖標點擊選取
                 app.querySelectorAll('[data-captcha-idx]').forEach(item => {
                     item.addEventListener('click', (e) => {
                         const idx = parseInt(item.dataset.captchaIdx);
@@ -1312,7 +1310,7 @@
 
                     const gridHtml = this.captchaGrid.map(item => `
                         <div class="inline-captcha-item ${item.selected ? 'selected' : ''}" data-captcha-idx="${item.index}">
-                            <img src="${item.url}" alt="verification image" />
+                            ${item.icon}
                         </div>
                     `).join('');
 
@@ -1322,13 +1320,13 @@
                                 <div class="inline-captcha-header" style="margin-bottom: 1rem;">
                                     <h3 style="font-size: 14px; font-weight: 500; color: var(--text-secondary);">請選出所有包含</h3>
                                     <h2 style="font-size: 24px; font-weight: 700; color: var(--primary-color); margin: 0.25rem 0;">${this.captchaTarget}</h2>
-                                    <h3 style="font-size: 14px; font-weight: 500; color: var(--text-secondary);">的圖片</h3>
+                                    <h3 style="font-size: 14px; font-weight: 500; color: var(--text-secondary);">的圖標</h3>
                                 </div>
                                 <div class="inline-captcha-grid" style="margin-bottom: 1.5rem;">
                                     ${gridHtml}
                                 </div>
                                 <div class="inline-captcha-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                                    <button class="captcha-btn-refresh" id="btnCaptchaRefresh" title="更新題目" type="button">↻</button>
+                                    <button class="captcha-btn-refresh" id="btnCaptchaRefresh" title="更新題目" type="button"><i class="fa-solid fa-arrows-rotate"></i></button>
                                     <div style="display: flex; gap: 0.5rem;">
                                         <button class="btn-secondary btn-small" id="btnCaptchaCancel" type="button" style="padding: 0.5rem 1rem;">取消</button>
                                         <button class="captcha-btn-verify" id="btnCaptchaVerify" type="button" style="padding: 0.5rem 1rem;">驗證</button>
