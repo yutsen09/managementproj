@@ -512,13 +512,172 @@
         }
 
 
+        /* 嵌入式九宮格驗證 */
+        .inline-captcha-container {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
+
+        .inline-captcha-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .inline-captcha-header h3 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .inline-captcha-header h2 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+
+        .inline-captcha-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+        }
+
+        .inline-captcha-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 6px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .inline-captcha-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .inline-captcha-item:hover img {
+            transform: scale(1.08);
+        }
+
+        .inline-captcha-item.selected {
+            border-color: var(--primary-color);
+            transform: scale(0.96);
+        }
+
+        .inline-captcha-item.selected::after {
+            content: "✓";
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            width: 18px;
+            height: 18px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: bold;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+
+        .inline-captcha-item.selected::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(219, 146, 110, 0.15);
+            z-index: 1;
+        }
+
+        .inline-captcha-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-top: 4px;
+        }
+
+        .captcha-btn-verify {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .captcha-btn-verify:hover {
+            background: #C97B4A;
+            transform: translateY(-1px);
+        }
+
+        .captcha-btn-refresh {
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 16px;
+            padding: 0;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .captcha-btn-refresh:hover {
+            background: var(--bg-primary);
+            color: var(--primary-color);
+        }
+
+        /* 驗證成功綠色區塊 */
+        .captcha-success-box {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: #E8F5E9;
+            color: #2E7D32;
+            border: 1px solid #C8E6C9;
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            animation: successPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes successPop {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
     </style>
 </head>
 <body>
     <div id="app"></div>
 
     <script>
-        // ============ 應用程序核心 ============
         class ExpenseReportApp {
             constructor() {
                 this.currentView = 'login';
@@ -526,6 +685,46 @@
                 this.showModal = false;
                 this.modalMessage = '';
                 
+                // 圖片驗證狀態
+                this.captchaVerified = false;
+                this.captchaTarget = '';
+                this.captchaTargetKey = '';
+                this.captchaGrid = [];
+
+                // 內建 Unsplash 高清圖片池 (包含五大類別：腳踏車、汽車、紅綠燈、摩托車、巴士)
+                this.captchaImagePool = [
+                    // 腳踏車 (bicycle)
+                    { id: 101, category: 'bicycle', url: 'https://images.unsplash.com/photo-1485965120184-e220f721d03e?w=200&auto=format&fit=crop&q=60' },
+                    { id: 102, category: 'bicycle', url: 'https://images.unsplash.com/photo-1532298229144-0ec0c57515c7?w=200&auto=format&fit=crop&q=60' },
+                    { id: 103, category: 'bicycle', url: 'https://images.unsplash.com/photo-1552993873-0dd1110e025f?w=200&auto=format&fit=crop&q=60' },
+                    { id: 104, category: 'bicycle', url: 'https://images.unsplash.com/photo-1582556103222-69d09785392a?w=200&auto=format&fit=crop&q=60' },
+                    { id: 105, category: 'bicycle', url: 'https://images.unsplash.com/photo-1608393508049-40db8711fbd1?w=200&auto=format&fit=crop&q=60' },
+                    // 汽車 (car)
+                    { id: 201, category: 'car', url: 'https://images.unsplash.com/photo-1605437241278-c1806d14a4d9?w=200&auto=format&fit=crop&q=60' },
+                    { id: 202, category: 'car', url: 'https://images.unsplash.com/photo-1668624712983-b44614cd1a86?w=200&auto=format&fit=crop&q=60' },
+                    { id: 203, category: 'car', url: 'https://images.unsplash.com/photo-1620584899131-a5ff5f8fbb03?w=200&auto=format&fit=crop&q=60' },
+                    { id: 204, category: 'car', url: 'https://images.unsplash.com/photo-1591385048763-4d3471fe0587?w=200&auto=format&fit=crop&q=60' },
+                    { id: 205, category: 'car', url: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=200&auto=format&fit=crop&q=60' },
+                    // 紅綠燈 (traffic_light)
+                    { id: 301, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1458169495136-854e4c39548a?w=200&auto=format&fit=crop&q=60' },
+                    { id: 302, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1530652101053-8c0db4fbb5de?w=200&auto=format&fit=crop&q=60' },
+                    { id: 303, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1509062522246-3755977927d7?w=200&auto=format&fit=crop&q=60' },
+                    { id: 304, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1510511459019-5dda7724fd87?w=200&auto=format&fit=crop&q=60' },
+                    { id: 305, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1674552791148-c756b0899dba?w=200&auto=format&fit=crop&q=60' },
+                    // 摩托車 (motorcycle)
+                    { id: 401, category: 'motorcycle', url: 'https://images.unsplash.com/photo-1558980394-da1f85d3b540?w=200&auto=format&fit=crop&q=60' },
+                    { id: 402, category: 'motorcycle', url: 'https://images.unsplash.com/photo-1558981403-c5f9899a28bc?w=200&auto=format&fit=crop&q=60' },
+                    { id: 403, category: 'motorcycle', url: 'https://images.unsplash.com/photo-1558979158-2966a2b43b99?w=200&auto=format&fit=crop&q=60' },
+                    { id: 404, category: 'motorcycle', url: 'https://images.unsplash.com/photo-1558981408-db0ecd8a1ee4?w=200&auto=format&fit=crop&q=60' },
+                    { id: 405, category: 'motorcycle', url: 'https://images.unsplash.com/photo-1558980664-2cd663cf8dde?w=200&auto=format&fit=crop&q=60' },
+                    // 巴士 (bus)
+                    { id: 501, category: 'bus', url: 'https://images.unsplash.com/photo-1529533603088-2333224ac6c5?w=200&auto=format&fit=crop&q=60' },
+                    { id: 502, category: 'bus', url: 'https://images.unsplash.com/photo-1506607541365-d0c9593de494?w=200&auto=format&fit=crop&q=60' },
+                    { id: 503, category: 'bus', url: 'https://images.unsplash.com/photo-1591414828873-e22382dae97d?w=200&auto=format&fit=crop&q=60' },
+                    { id: 504, category: 'bus', url: 'https://images.unsplash.com/photo-1719210699672-287362b89cbd?w=200&auto=format&fit=crop&q=60' },
+                    { id: 505, category: 'bus', url: 'https://images.unsplash.com/photo-1517303650219-83c8b1788c4c?w=200&auto=format&fit=crop&q=60' }
+                ];
+
                 // 初始化數據 (優先從 localStorage 載入)
                 const storedUsers = localStorage.getItem('expense_users');
                 if (storedUsers) {
@@ -559,6 +758,7 @@
             }
 
             init() {
+                this.resetCaptcha(false);
                 this.render();
                 this.attachEventListeners();
             }
@@ -571,6 +771,79 @@
                     this.showModal = false;
                     this.render();
                 }, 3000);
+            }
+
+            resetCaptcha(shouldRender = false) {
+                this.captchaVerified = false;
+
+                // 隨機選擇目標主題
+                const categories = [
+                    { key: 'bicycle', name: '腳踏車' },
+                    { key: 'car', name: '汽車' },
+                    { key: 'traffic_light', name: '紅綠燈' },
+                    { key: 'motorcycle', name: '摩托車' },
+                    { key: 'bus', name: '巴士' }
+                ];
+                const selectedTarget = categories[Math.floor(Math.random() * categories.length)];
+                this.captchaTarget = selectedTarget.name;
+                this.captchaTargetKey = selectedTarget.key;
+
+                // 從圖片池中挑選圖片
+                const targetImages = this.captchaImagePool.filter(img => img.category === this.captchaTargetKey);
+                const otherImages = this.captchaImagePool.filter(img => img.category !== this.captchaTargetKey);
+
+                // 隨機生成 3~5 張目標圖片
+                const targetCount = Math.floor(Math.random() * 3) + 3; // 3, 4, 5張
+                const shuffledTarget = targetImages.sort(() => 0.5 - Math.random()).slice(0, targetCount);
+
+                // 其餘 9 - targetCount 張為混淆圖片
+                const otherCount = 9 - targetCount;
+                const shuffledOther = otherImages.sort(() => 0.5 - Math.random()).slice(0, otherCount);
+
+                // 合併洗牌
+                const combined = [...shuffledTarget, ...shuffledOther].sort(() => 0.5 - Math.random());
+
+                // 建立九宮格狀態
+                this.captchaGrid = combined.map((img, idx) => ({
+                    index: idx,
+                    id: img.id,
+                    url: img.url,
+                    category: img.category,
+                    selected: false
+                }));
+
+                if (shouldRender) {
+                    this.render();
+                }
+            }
+
+            renderInlineCaptcha() {
+                // 若未完成初始化，則先進行初始化
+                if (!this.captchaGrid || this.captchaGrid.length === 0) {
+                    this.resetCaptcha(false);
+                }
+
+                const gridHtml = this.captchaGrid.map(item => `
+                    <div class="inline-captcha-item ${item.selected ? 'selected' : ''}" data-captcha-idx="${item.index}">
+                        <img src="${item.url}" alt="verification image" />
+                    </div>
+                `).join('');
+
+                return `
+                    <div class="inline-captcha-container">
+                        <div class="inline-captcha-header">
+                            <h3>請選出所有包含</h3>
+                            <h2>${this.captchaTarget}</h2>
+                            <h3>的圖片</h3>
+                        </div>
+                        <div class="inline-captcha-grid">
+                            ${gridHtml}
+                        </div>
+                        <div class="inline-captcha-footer" style="justify-content: flex-end;">
+                            <button class="captcha-btn-refresh" id="btnCaptchaRefresh" title="更新題目" type="button">↻</button>
+                        </div>
+                    </div>
+                `;
             }
 
             handleLogin(email, password) {
@@ -614,6 +887,7 @@
                 // 檢查密碼更新限制 (累積登入大於等於5次)
                 if (user.loginCount >= 5) {
                     this.currentUser = { ...user, needsPasswordChange: true };
+                    this.resetCaptcha(false);
                     this.currentView = 'changePassword';
                     this.render();
                     return;
@@ -654,6 +928,7 @@
 
             handleLogout() {
                 this.currentUser = null;
+                this.resetCaptcha(false);
                 this.currentView = 'login';
                 this.render();
             }
@@ -672,6 +947,7 @@
                 }
 
                 this.currentUser = null;
+                this.resetCaptcha(false);
                 this.currentView = 'login';
                 this.showMessage('密碼已更新');
                 this.render();
@@ -742,6 +1018,7 @@
                         localStorage.removeItem('last_user_title');
                         localStorage.removeItem('last_user_name_for_title');
                         this.currentUser = null;
+                        this.resetCaptcha(false);
                         this.currentView = 'login';
                     }
                     this.render();
@@ -791,6 +1068,22 @@
                 if (loginForm) {
                     loginForm.addEventListener('submit', (e) => {
                         e.preventDefault();
+                        
+                        // 檢查九宮格是否選取正確
+                        const incorrect = this.captchaGrid.some(item => {
+                            const isTarget = item.category === this.captchaTargetKey;
+                            return (isTarget && !item.selected) || (!isTarget && item.selected);
+                        });
+
+                        if (incorrect) {
+                            this.showMessage('驗證失敗，請再試一次');
+                            // 自動刷新題目
+                            setTimeout(() => {
+                                this.resetCaptcha(true);
+                            }, 1000);
+                            return;
+                        }
+
                         const email = app.querySelector('#loginEmail').value;
                         const password = app.querySelector('#loginPassword').value;
                         this.handleLogin(email, password);
@@ -802,6 +1095,7 @@
                 if (toRegister) {
                     toRegister.addEventListener('click', (e) => {
                         e.preventDefault();
+                        this.resetCaptcha(false);
                         this.currentView = 'register';
                         this.render();
                     });
@@ -812,6 +1106,7 @@
                 if (toLogin) {
                     toLogin.addEventListener('click', (e) => {
                         e.preventDefault();
+                        this.resetCaptcha(false);
                         this.currentView = 'login';
                         this.render();
                     });
@@ -822,6 +1117,22 @@
                 if (registerForm) {
                     registerForm.addEventListener('submit', (e) => {
                         e.preventDefault();
+
+                        // 檢查九宮格是否選取正確
+                        const incorrect = this.captchaGrid.some(item => {
+                            const isTarget = item.category === this.captchaTargetKey;
+                            return (isTarget && !item.selected) || (!isTarget && item.selected);
+                        });
+
+                        if (incorrect) {
+                            this.showMessage('驗證失敗，請再試一次');
+                            // 自動刷新題目
+                            setTimeout(() => {
+                                this.resetCaptcha(true);
+                            }, 1000);
+                            return;
+                        }
+
                         const name = app.querySelector('#registerName').value;
                         const email = app.querySelector('#registerEmail').value;
                         const role = app.querySelector('#registerRole').value;
@@ -952,15 +1263,60 @@
                         }
                     });
                 }
+
+                // 驗證圖片點擊選取
+                app.querySelectorAll('[data-captcha-idx]').forEach(item => {
+                    item.addEventListener('click', (e) => {
+                        const idx = parseInt(item.dataset.captchaIdx);
+                        const gridItem = this.captchaGrid.find(g => g.index === idx);
+                        if (gridItem) {
+                            gridItem.selected = !gridItem.selected;
+                            this.render();
+                        }
+                    });
+                });
+
+
+
+                // 刷新按鈕
+                const btnCaptchaRefresh = app.querySelector('#btnCaptchaRefresh');
+                if (btnCaptchaRefresh) {
+                    btnCaptchaRefresh.addEventListener('click', () => {
+                        this.resetCaptcha(true);
+                    });
+                }
             }
 
             render() {
                 const app = document.getElementById('app');
                 
+                let loginEmailVal = '';
+                let loginPasswordVal = '';
+                let regNameVal = '';
+                let regEmailVal = '';
+                let regPasswordVal = '';
+                let regRoleVal = 'applicant';
+
+                if (app) {
+                    const loginEmailEl = app.querySelector('#loginEmail');
+                    const loginPasswordEl = app.querySelector('#loginPassword');
+                    if (loginEmailEl) loginEmailVal = loginEmailEl.value;
+                    if (loginPasswordEl) loginPasswordVal = loginPasswordEl.value;
+
+                    const regNameEl = app.querySelector('#registerName');
+                    const regEmailEl = app.querySelector('#registerEmail');
+                    const regPasswordEl = app.querySelector('#registerPassword');
+                    const regRoleEl = app.querySelector('#registerRole');
+                    if (regNameEl) regNameVal = regNameEl.value;
+                    if (regEmailEl) regEmailVal = regEmailEl.value;
+                    if (regPasswordEl) regPasswordVal = regPasswordEl.value;
+                    if (regRoleEl) regRoleVal = regRoleEl.value;
+                }
+
                 if (this.currentView === 'login') {
-                    app.innerHTML = this.renderLogin();
+                    app.innerHTML = this.renderLogin(loginEmailVal, loginPasswordVal);
                 } else if (this.currentView === 'register') {
-                    app.innerHTML = this.renderRegister();
+                    app.innerHTML = this.renderRegister(regNameVal, regEmailVal, regPasswordVal, regRoleVal);
                 } else if (this.currentView === 'changePassword') {
                     app.innerHTML = this.renderChangePassword();
                 } else if (this.currentView === 'dashboard') {
@@ -1025,11 +1381,12 @@
                 this.users.push(newUser);
                 this.saveData();
                 this.showMessage('註冊成功！請登入');
+                this.resetCaptcha(false);
                 this.currentView = 'login';
                 this.render();
             }
 
-            renderRegister() {
+            renderRegister(name = '', email = '', password = '', role = 'applicant') {
                 return `
                     <div class="login-container">
                         <div class="login-box">
@@ -1043,23 +1400,24 @@
                                 <div class="form-group">
                                     <label>選擇身分</label>
                                     <select id="registerRole" required>
-                                        <option value="applicant">申請者 (預設額度 ¥1,000)</option>
-                                        <option value="manager">主管 (預設額度 ¥50,000)</option>
-                                        <option value="admin">系統管理者 (預設額度 ¥100,000)</option>
+                                        <option value="applicant" ${role === 'applicant' ? 'selected' : ''}>申請者 (預設額度 ¥1,000)</option>
+                                        <option value="manager" ${role === 'manager' ? 'selected' : ''}>主管 (預設額度 ¥50,000)</option>
+                                        <option value="admin" ${role === 'admin' ? 'selected' : ''}>系統管理者 (預設額度 ¥100,000)</option>
                                     </select>
                                 </div>
                                 <div class="form-group">
                                     <label>真實姓名</label>
-                                    <input type="text" id="registerName" placeholder="輸入姓名" required />
+                                    <input type="text" id="registerName" placeholder="輸入姓名" value="${name}" required />
                                 </div>
                                 <div class="form-group">
                                     <label>帳號 (電子郵箱)</label>
-                                    <input type="email" id="registerEmail" placeholder="username@company.com" required />
+                                    <input type="email" id="registerEmail" placeholder="username@company.com" value="${email}" required />
                                 </div>
                                 <div class="form-group">
                                     <label>密碼</label>
-                                    <input type="password" id="registerPassword" placeholder="至少6個字元" minlength="6" required />
+                                    <input type="password" id="registerPassword" placeholder="至少6個字元" minlength="6" value="${password}" required />
                                 </div>
+                                ${this.renderInlineCaptcha()}
                                 <button type="submit" class="btn-primary" style="width: 100%; margin-bottom: 1rem;">
                                     註冊
                                 </button>
@@ -1072,7 +1430,7 @@
                 `;
             }
 
-            renderLogin() {
+            renderLogin(email = '', password = '') {
                 return `
                     <div class="login-container">
                         <div class="login-box">
@@ -1085,12 +1443,13 @@
                             <form id="loginForm">
                                 <div class="form-group">
                                     <label>郵箱</label>
-                                    <input type="email" id="loginEmail" placeholder="user@company.com" required />
+                                    <input type="email" id="loginEmail" placeholder="user@company.com" value="${email}" required />
                                 </div>
                                 <div class="form-group">
                                     <label>密碼</label>
-                                    <input type="password" id="loginPassword" placeholder="輸入密碼" required />
+                                    <input type="password" id="loginPassword" placeholder="輸入密碼" value="${password}" required />
                                 </div>
+                                ${this.renderInlineCaptcha()}
                                 <button type="submit" class="btn-primary" style="width: 100%;">
                                     登入
                                 </button>
