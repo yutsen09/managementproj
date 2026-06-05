@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智能報帳系統</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * {
             margin: 0;
@@ -509,6 +510,8 @@
                 grid-template-columns: 1fr;
             }
         }
+
+
     </style>
 </head>
 <body>
@@ -523,22 +526,36 @@
                 this.showModal = false;
                 this.modalMessage = '';
                 
-                // 初始化數據
-                this.users = [
-                    { id: 1, email: 'applicant@company.com', password: '123456', name: '王明', role: 'applicant', budget: 1000, spent: 450, loginCount: 0, failCount: 0 },
-                    { id: 2, email: 'manager@company.com', password: '123456', name: '李經理', role: 'manager', budget: 50000, spent: 12000, loginCount: 0, failCount: 0 },
-                    { id: 3, email: 'admin@company.com', password: '123456', name: '陳管理員', role: 'admin', budget: 100000, spent: 0, loginCount: 0, failCount: 0 }
-                ];
+                // 初始化數據 (優先從 localStorage 載入)
+                const storedUsers = localStorage.getItem('expense_users');
+                if (storedUsers) {
+                    this.users = JSON.parse(storedUsers);
+                } else {
+                    this.users = [
+                        { id: 1, email: 'applicant@company.com', password: '123456', name: '王明', role: 'applicant', budget: 1000, spent: 450, loginCount: 0, failCount: 0 },
+                        { id: 2, email: 'manager@company.com', password: '123456', name: '李經理', role: 'manager', budget: 50000, spent: 12000, loginCount: 0, failCount: 0 },
+                        { id: 3, email: 'admin@company.com', password: '123456', name: '陳管理員', role: 'admin', budget: 100000, spent: 0, loginCount: 0, failCount: 0 }
+                    ];
+                    localStorage.setItem('expense_users', JSON.stringify(this.users));
+                }
 
-                this.reports = [
-                    { id: 1, applicantId: 1, amount: 450, date: '2024-01-15', category: '辦公用品', department: '市場部', status: 'approved', description: '列印紙張', createdAt: '2024-01-16' },
-                    { id: 2, applicantId: 2, amount: 5000, date: '2024-02-01', category: '出差費用', department: '銷售部', status: 'pending', description: '深圳出差機票酒店', createdAt: '2024-02-02' }
-                ];
+                const storedReports = localStorage.getItem('expense_reports');
+                if (storedReports) {
+                    this.reports = JSON.parse(storedReports);
+                } else {
+                    this.reports = [
+                        { id: 1, applicantId: 1, amount: 450, date: '2024-01-15', category: '辦公用品', department: '市場部', status: 'approved', description: '列印紙張', createdAt: '2024-01-16', hasAttachment: true, processedAt: '2024-01-16', reviewerId: 2, reviewerName: '李經理' },
+                        { id: 2, applicantId: 2, amount: 5000, date: '2024-02-01', category: '出差費用', department: '銷售部', status: 'pending', description: '深圳出差機票酒店', createdAt: '2024-02-02', hasAttachment: true, processedAt: '', reviewerId: null, reviewerName: null }
+                    ];
+                    localStorage.setItem('expense_reports', JSON.stringify(this.reports));
+                }
 
-                this.loginAttempts = {};
-                this.lockedIPs = new Set();
-                
                 this.init();
+            }
+
+            saveData() {
+                localStorage.setItem('expense_users', JSON.stringify(this.users));
+                localStorage.setItem('expense_reports', JSON.stringify(this.reports));
             }
 
             init() {
@@ -559,18 +576,33 @@
             handleLogin(email, password) {
                 const userIP = 'user-ip';
 
-                if (this.lockedIPs.has(userIP)) {
-                    this.showMessage('您的IP已被鎖定，請稍後再試');
+                // 檢查 IP 鎖定狀態 (持久化於 localStorage)
+                const lockedUntil = parseInt(localStorage.getItem(`ip_locked_until_${userIP}`) || '0');
+                if (Date.now() < lockedUntil) {
+                    const remainingMinutes = Math.ceil((lockedUntil - Date.now()) / (60 * 1000));
+                    this.showMessage(`您的IP已被鎖定，請於 ${remainingMinutes} 分鐘後再試`);
                     return;
                 }
 
                 const user = this.users.find(u => u.email === email);
+                
+                // 檢查是否輸入錯誤
                 if (!user || user.password !== password) {
-                    const attempts = (this.loginAttempts[userIP] || 0) + 1;
-                    this.loginAttempts[userIP] = attempts;
+                    // 記錄 IP 嘗試次數
+                    const attempts = (parseInt(localStorage.getItem(`ip_attempts_${userIP}`) || '0')) + 1;
+                    localStorage.setItem(`ip_attempts_${userIP}`, attempts);
+
+                    // 記錄使用者的 failCount
+                    if (user) {
+                        user.failCount = (user.failCount || 0) + 1;
+                        this.saveData();
+                    }
 
                     if (attempts >= 5) {
-                        this.lockedIPs.add(userIP);
+                        // 鎖定 IP 2 小時
+                        const lockTime = Date.now() + 2 * 60 * 60 * 1000;
+                        localStorage.setItem(`ip_locked_until_${userIP}`, lockTime);
+                        localStorage.removeItem(`ip_attempts_${userIP}`);
                         this.showMessage('密碼錯誤5次，您的IP已被鎖定2小時');
                         return;
                     }
@@ -579,6 +611,7 @@
                     return;
                 }
 
+                // 檢查密碼更新限制 (累積登入大於等於5次)
                 if (user.loginCount >= 5) {
                     this.currentUser = { ...user, needsPasswordChange: true };
                     this.currentView = 'changePassword';
@@ -586,15 +619,37 @@
                     return;
                 }
 
-                user.loginCount++;
-                this.currentUser = { ...user };
-                this.loginAttempts[userIP] = 0;
-                this.currentView = 'dashboard';
-
-                if (user.failCount > 0) {
-                    this.showMessage(`提醒：您上次有${user.failCount}次登入錯誤`);
+                // 登入成功處理
+                // 1. 重置此 IP 的錯誤嘗試次數
+                localStorage.removeItem(`ip_attempts_${userIP}`);
+                
+                // 2. 處理歡迎詞與稱謂緩存 (先生/小姐)
+                localStorage.setItem('last_user_name', user.name);
+                if (!localStorage.getItem('last_user_title') || localStorage.getItem('last_user_name_for_title') !== user.name) {
+                    localStorage.setItem('last_user_title', Math.random() > 0.5 ? '先生' : '小姐');
+                    localStorage.setItem('last_user_name_for_title', user.name);
                 }
+
+                // 3. 處理錯誤登入次數提醒
+                let loginAlert = null;
+                if (user.failCount > 0) {
+                    loginAlert = `提醒：您上次有${user.failCount}次登入錯誤`;
+                    user.failCount = 0; // 重置
+                }
+
+                // 4. 增加成功登入次數並儲存資料
+                user.loginCount++;
+                this.saveData(); // 儲存
+
+                // 5. 轉向儀表板
+                this.currentUser = { ...user };
+                this.currentView = 'dashboard';
                 this.render();
+
+                // 6. 彈出警告訊息
+                if (loginAlert) {
+                    this.showMessage(loginAlert);
+                }
             }
 
             handleLogout() {
@@ -613,6 +668,7 @@
                 if (user) {
                     user.password = newPassword;
                     user.loginCount = 0;
+                    this.saveData(); // 儲存新密碼與重設的 loginCount
                 }
 
                 this.currentUser = null;
@@ -632,10 +688,15 @@
                     department: formData.department,
                     description: formData.description,
                     status: amount <= 1000 ? 'approved' : 'pending',
-                    createdAt: new Date().toISOString().split('T')[0]
+                    createdAt: new Date().toISOString().split('T')[0],
+                    hasAttachment: formData.hasAttachment,
+                    processedAt: amount <= 1000 ? new Date().toISOString().split('T')[0] : '',
+                    reviewerId: amount <= 1000 ? 3 : null, // 系統自動通過歸類為管理員 id
+                    reviewerName: amount <= 1000 ? '系統自動審核' : null
                 };
                 
                 this.reports.push(newReport);
+                this.saveData(); // 儲存新增的報告
                 this.showMessage(newReport.status === 'approved' ? '報告已自動通過' : '報告已提交等待審批');
                 this.currentView = 'dashboard';
                 this.render();
@@ -645,6 +706,10 @@
                 const report = this.reports.find(r => r.id === reportId);
                 if (report) {
                     report.status = 'approved';
+                    report.processedAt = new Date().toISOString().split('T')[0];
+                    report.reviewerId = this.currentUser.id;
+                    report.reviewerName = this.currentUser.name;
+                    this.saveData(); // 儲存審核通過狀態
                     this.showMessage('已通過申請');
                     this.render();
                 }
@@ -654,31 +719,65 @@
                 const report = this.reports.find(r => r.id === reportId);
                 if (report) {
                     report.status = 'rejected';
+                    report.processedAt = new Date().toISOString().split('T')[0];
+                    report.reviewerId = this.currentUser.id;
+                    report.reviewerName = this.currentUser.name;
+                    this.saveData(); // 儲存退回狀態
                     this.showMessage('已退回申請');
                     this.render();
                 }
             }
 
             handleDeleteUser(userId) {
-                if (confirm('確定要註銷此帳號嗎？')) {
+                const isSelf = this.currentUser && this.currentUser.id === userId;
+                const confirmMsg = isSelf ? '確定要永久註銷您的帳號嗎？此操作無法復原。' : '確定要註銷此帳號嗎？';
+                if (confirm(confirmMsg)) {
                     this.users = this.users.filter(u => u.id !== userId);
+                    this.saveData(); // 儲存刪除後的使用者清單
                     this.showMessage('已註銷帳號');
+                    
+                    if (isSelf) {
+                        // 清除歡迎詞快取
+                        localStorage.removeItem('last_user_name');
+                        localStorage.removeItem('last_user_title');
+                        localStorage.removeItem('last_user_name_for_title');
+                        this.currentUser = null;
+                        this.currentView = 'login';
+                    }
                     this.render();
                 }
             }
 
             exportToExcel(data, filename) {
-                let csv = '';
-                if (data.length > 0) {
-                    const headers = Object.keys(data[0]);
-                    csv += headers.join(',') + '\n';
-                    data.forEach(row => {
-                        csv += headers.map(h => row[h]).join(',') + '\n';
-                    });
-                }
+                let csv = '\uFEFF'; // 加入 BOM 以免 Excel 開啟時中文亂碼
+                
+                const headers = ['申請金額', '日期', '類別', '負責單位', '描述', '是否有付證明文件', '是否通過', '通過/駁回的時間'];
+                csv += headers.join(',') + '\n';
+                
+                data.forEach(report => {
+                    const amountStr = `¥${report.amount}`;
+                    const dateStr = report.date || '';
+                    const categoryStr = report.category || '';
+                    const deptStr = `"${(report.department || '').replace(/"/g, '""')}"`;
+                    const descStr = `"${(report.description || '').replace(/"/g, '""')}"`;
+                    const hasAttachmentStr = report.hasAttachment ? '是' : '否';
+                    
+                    let statusStr = '審核中';
+                    if (report.status === 'approved') {
+                        statusStr = '已通過';
+                    } else if (report.status === 'rejected') {
+                        statusStr = '已退回';
+                    }
+                    
+                    const processedTimeStr = report.processedAt || '無';
+                    
+                    const row = [amountStr, dateStr, categoryStr, deptStr, descStr, hasAttachmentStr, statusStr, processedTimeStr];
+                    csv += row.join(',') + '\n';
+                });
                 
                 const link = document.createElement('a');
-                link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                link.href = URL.createObjectURL(blob);
                 link.download = filename;
                 link.click();
                 this.showMessage('已匯出 Excel');
@@ -698,6 +797,39 @@
                     });
                 }
 
+                // 切換到註冊頁
+                const toRegister = app.querySelector('#toRegister');
+                if (toRegister) {
+                    toRegister.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.currentView = 'register';
+                        this.render();
+                    });
+                }
+
+                // 返回登入頁
+                const toLogin = app.querySelector('#toLogin');
+                if (toLogin) {
+                    toLogin.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.currentView = 'login';
+                        this.render();
+                    });
+                }
+
+                // 註冊表單提交
+                const registerForm = app.querySelector('#registerForm');
+                if (registerForm) {
+                    registerForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const name = app.querySelector('#registerName').value;
+                        const email = app.querySelector('#registerEmail').value;
+                        const role = app.querySelector('#registerRole').value;
+                        const password = app.querySelector('#registerPassword').value;
+                        this.handleRegister(name, email, role, password);
+                    });
+                }
+
                 // 修改密碼表單
                 const changePasswordForm = app.querySelector('#changePasswordForm');
                 if (changePasswordForm) {
@@ -708,17 +840,33 @@
                     });
                 }
 
+                // 拖拽與檔案上傳按鈕連結
+                const uploadArea = app.querySelector('#uploadArea');
+                const attachmentInput = app.querySelector('#attachmentInput');
+                if (uploadArea && attachmentInput) {
+                    uploadArea.addEventListener('click', () => attachmentInput.click());
+                    attachmentInput.addEventListener('change', (e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                            app.querySelector('#uploadStatus').innerText = `已選擇文件: ${e.target.files[0].name}`;
+                            uploadArea.style.borderColor = 'var(--primary-color)';
+                            uploadArea.style.background = 'rgba(217, 146, 110, 0.05)';
+                        }
+                    });
+                }
+
                 // 新建報告表單
                 const newReportForm = app.querySelector('#newReportForm');
                 if (newReportForm) {
                     newReportForm.addEventListener('submit', (e) => {
                         e.preventDefault();
+                        const attachmentInput = app.querySelector('#attachmentInput');
                         const formData = {
                             amount: app.querySelector('#amount').value,
                             date: app.querySelector('#date').value,
                             category: app.querySelector('#category').value,
                             department: app.querySelector('#department').value,
-                            description: app.querySelector('#description').value
+                            description: app.querySelector('#description').value,
+                            hasAttachment: attachmentInput && attachmentInput.files && attachmentInput.files.length > 0
                         };
                         this.handleSubmitReport(formData);
                     });
@@ -727,6 +875,11 @@
                 // 登出按鈕
                 app.querySelectorAll('[data-action="logout"]').forEach(btn => {
                     btn.addEventListener('click', () => this.handleLogout());
+                });
+
+                // 使用者自己註銷帳號
+                app.querySelectorAll('[data-action="delete-self"]').forEach(btn => {
+                    btn.addEventListener('click', () => this.handleDeleteUser(this.currentUser.id));
                 });
 
                 // 返回按鈕
@@ -763,6 +916,8 @@
                         this.handleRejectReport(reportId);
                     });
                 });
+
+
 
                 // 刪除用戶
                 app.querySelectorAll('[data-delete-user]').forEach(btn => {
@@ -804,6 +959,8 @@
                 
                 if (this.currentView === 'login') {
                     app.innerHTML = this.renderLogin();
+                } else if (this.currentView === 'register') {
+                    app.innerHTML = this.renderRegister();
                 } else if (this.currentView === 'changePassword') {
                     app.innerHTML = this.renderChangePassword();
                 } else if (this.currentView === 'dashboard') {
@@ -833,13 +990,93 @@
                 }
 
                 this.attachEventListeners();
+
+                if (this.currentView === 'analytics') {
+                    this.initAnalyticsCharts();
+                }
+            }
+
+            handleRegister(name, email, role, password) {
+                const exists = this.users.some(u => u.email.toLowerCase() === email.toLowerCase());
+                if (exists) {
+                    this.showMessage('此帳號已存在');
+                    return;
+                }
+
+                let budget = 1000;
+                if (role === 'manager') {
+                    budget = 50000;
+                } else if (role === 'admin') {
+                    budget = 100000;
+                }
+
+                const newUser = {
+                    id: Math.max(...this.users.map(u => u.id), 0) + 1,
+                    email: email,
+                    password: password,
+                    name: name,
+                    role: role,
+                    budget: budget,
+                    spent: 0,
+                    loginCount: 0,
+                    failCount: 0
+                };
+
+                this.users.push(newUser);
+                this.saveData();
+                this.showMessage('註冊成功！請登入');
+                this.currentView = 'login';
+                this.render();
+            }
+
+            renderRegister() {
+                return `
+                    <div class="login-container">
+                        <div class="login-box">
+                            <div class="login-header">
+                                <div class="login-icon">👤</div>
+                                <h1 class="login-title">使用者註冊</h1>
+                                <p class="login-subtitle">加入智能報帳系統</p>
+                            </div>
+
+                            <form id="registerForm">
+                                <div class="form-group">
+                                    <label>選擇身分</label>
+                                    <select id="registerRole" required>
+                                        <option value="applicant">申請者 (預設額度 ¥1,000)</option>
+                                        <option value="manager">主管 (預設額度 ¥50,000)</option>
+                                        <option value="admin">系統管理者 (預設額度 ¥100,000)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>真實姓名</label>
+                                    <input type="text" id="registerName" placeholder="輸入姓名" required />
+                                </div>
+                                <div class="form-group">
+                                    <label>帳號 (電子郵箱)</label>
+                                    <input type="email" id="registerEmail" placeholder="username@company.com" required />
+                                </div>
+                                <div class="form-group">
+                                    <label>密碼</label>
+                                    <input type="password" id="registerPassword" placeholder="至少6個字元" minlength="6" required />
+                                </div>
+                                <button type="submit" class="btn-primary" style="width: 100%; margin-bottom: 1rem;">
+                                    註冊
+                                </button>
+                                <div style="text-align: center;">
+                                    <a href="#" id="toLogin" style="color: var(--text-secondary); text-decoration: none; font-size: 14px;">返回登入</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
             }
 
             renderLogin() {
                 return `
                     <div class="login-container">
                         <div class="login-box">
-                            <div class="login-header">
+                            <div class="login-header" style="display: flex; flex-direction: column; align-items: center;">
                                 <div class="login-icon">📊</div>
                                 <h1 class="login-title">智能報帳系統</h1>
                                 <p class="login-subtitle">高效管理 • 透明審核</p>
@@ -857,6 +1094,10 @@
                                 <button type="submit" class="btn-primary" style="width: 100%;">
                                     登入
                                 </button>
+                                <div style="text-align: center; margin-top: 1.5rem;">
+                                    <span style="color: var(--text-secondary); font-size: 14px;">沒有帳號？</span>
+                                    <a href="#" id="toRegister" style="color: var(--primary-color); text-decoration: none; font-size: 14px; font-weight: 500;">立即註冊</a>
+                                </div>
                             </form>
 
                             <div class="demo-accounts">
@@ -904,14 +1145,23 @@
                 const role = this.currentUser.role === 'applicant' ? '申請者' : 
                             this.currentUser.role === 'manager' ? '主管' : '系統管理員';
 
+                // 讀取快取的稱謂
+                let title = localStorage.getItem('last_user_title');
+                if (!title || localStorage.getItem('last_user_name') !== this.currentUser.name) {
+                    title = Math.random() > 0.5 ? '先生' : '小姐';
+                }
+
                 return `
                     <div class="container dashboard">
                         <div class="page-header">
                             <div>
-                                <h1>歡迎，${this.currentUser.name}${Math.random() > 0.5 ? '先生' : '女士'}</h1>
+                                <h1>歡迎 ${this.currentUser.name}${title}</h1>
                                 <p class="welcome-text">${role}</p>
                             </div>
-                            <button class="btn-secondary" data-action="logout">登出</button>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <button class="btn-secondary" data-action="logout">登出</button>
+                                <button class="btn-danger btn-small" data-action="delete-self">註銷帳號</button>
+                            </div>
                         </div>
 
                         <div class="grid grid-auto">
@@ -984,9 +1234,10 @@
                                     <textarea id="description" placeholder="請簡要描述報帳事由" required></textarea>
                                 </div>
 
-                                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 8px; text-align: center; cursor: pointer; margin-bottom: 1.5rem;">
-                                    <p>上傳相關文件（發票、收據等）</p>
+                                <div id="uploadArea" style="padding: 1rem; background: var(--bg-secondary); border-radius: 8px; text-align: center; cursor: pointer; margin-bottom: 1.5rem; border: 1px dashed var(--border-color); transition: all 0.3s;">
+                                    <p id="uploadStatus">上傳相關文件（發票、收據等）</p>
                                     <p style="font-size: 12px; color: var(--text-tertiary); margin: 0.5rem 0 0 0;">點擊或拖拽上傳</p>
+                                    <input type="file" id="attachmentInput" style="display: none;" />
                                 </div>
 
                                 <button type="submit" class="btn-primary" style="width: 100%;">提交申請</button>
@@ -1007,7 +1258,10 @@
 
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                             <h2>報帳記錄</h2>
-                            <button class="btn-secondary btn-small" data-export="reports">匯出 Excel</button>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn-secondary btn-small" data-view="analytics">數據分析</button>
+                                <button class="btn-secondary btn-small" data-export="reports">匯出 Excel</button>
+                            </div>
                         </div>
 
                         <div class="report-list">
@@ -1034,89 +1288,290 @@
             renderReview() {
                 const pendingReports = this.reports.filter(r => r.status === 'pending');
 
+                const listHtml = pendingReports.length > 0 ? pendingReports.map(report => {
+                    const applicant = this.users.find(u => u.id === report.applicantId);
+                    const applicantName = applicant ? applicant.name : '未知使用者';
+                    return `
+                        <div class="review-item">
+                            <div>
+                                <div class="user-info">
+                                    <div class="avatar">${applicantName.charAt(0)}</div>
+                                    <div class="user-details">
+                                        <p class="user-name">${applicantName}</p>
+                                        <p class="user-email">申請金額: ¥${report.amount}</p>
+                                    </div>
+                                </div>
+                                <p>${report.description}</p>
+                                <p class="report-meta">${report.category} • ${report.date}</p>
+                            </div>
+                            <div class="review-buttons">
+                                <button class="btn-success" data-approve="${report.id}">✓ 通過</button>
+                                <button class="btn-danger" data-reject="${report.id}">✕ 退回</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('') : '<div class="empty-state"><p>沒有待審核的報告</p></div>';
+
                 return `
                     <div class="container">
                         <a class="back-link" data-action="back" data-view="dashboard">← 返回</a>
 
-                        <h2>待審核報告 (${pendingReports.length})</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h2>報帳審核面板</h2>
+                        </div>
 
                         <div class="report-list">
-                            ${pendingReports.length > 0 ? pendingReports.map(report => {
-                                const applicant = this.users.find(u => u.id === report.applicantId);
-                                return `
-                                    <div class="review-item">
-                                        <div>
-                                            <div class="user-info">
-                                                <div class="avatar">${applicant.name.charAt(0)}</div>
-                                                <div class="user-details">
-                                                    <p class="user-name">${applicant.name}</p>
-                                                    <p class="user-email">申請金額: ¥${report.amount}</p>
-                                                </div>
-                                            </div>
-                                            <p>${report.description}</p>
-                                            <p class="report-meta">${report.category} • ${report.date}</p>
-                                        </div>
-                                        <div class="review-buttons">
-                                            <button class="btn-success" data-approve="${report.id}">✓ 通過</button>
-                                            <button class="btn-danger" data-reject="${report.id}">✕ 退回</button>
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('') : '<div class="empty-state"><p>沒有待審核的報告</p></div>'}
+                            ${listHtml}
                         </div>
                     </div>
                 `;
             }
 
             renderAnalytics() {
-                const categoryTotal = this.reports.reduce((acc, r) => {
+                // 依權限過濾資料範圍
+                const targetReports = this.reports.filter(r => 
+                    this.currentUser.role === 'applicant' ? r.applicantId === this.currentUser.id : true
+                );
+
+                const categoryTotal = targetReports.reduce((acc, r) => {
                     acc[r.category] = (acc[r.category] || 0) + r.amount;
                     return acc;
                 }, {});
+                
                 const totalAmount = Object.values(categoryTotal).reduce((a, b) => a + b, 0);
+                const approvedAmount = targetReports
+                    .filter(r => r.status === 'approved')
+                    .reduce((a, b) => a + b.amount, 0);
+                
+                const categoryRows = Object.entries(categoryTotal).map(([cat, amt]) => {
+                    const percentage = totalAmount > 0 ? ((amt / totalAmount) * 100).toFixed(1) : '0.0';
+                    return `
+                        <tr>
+                            <td style="padding: 0.75rem; border-bottom: 0.5px solid var(--border-color);">${cat}</td>
+                            <td style="padding: 0.75rem; border-bottom: 0.5px solid var(--border-color); text-align: right; font-weight: 500;">¥${amt}</td>
+                            <td style="padding: 0.75rem; border-bottom: 0.5px solid var(--border-color); text-align: right; color: var(--text-secondary);">${percentage}%</td>
+                        </tr>
+                    `;
+                }).join('');
 
                 return `
                     <div class="container">
                         <a class="back-link" data-action="back" data-view="dashboard">← 返回</a>
 
-                        <h2>報帳數據分析</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h2>報帳數據分析中心</h2>
+                            <button class="btn-secondary btn-small" data-export="analytics">匯出報帳明細</button>
+                        </div>
 
                         <div class="grid grid-auto">
                             <div class="stat-card">
-                                <p class="stat-label">總報帳額</p>
+                                <p class="stat-label">累積申報總額</p>
                                 <p class="stat-value">¥${totalAmount}</p>
                             </div>
                             <div class="stat-card">
-                                <p class="stat-label">報告數量</p>
-                                <p class="stat-value">${this.reports.length}</p>
+                                <p class="stat-label">已核准通過總額</p>
+                                <p class="stat-value" style="color: var(--success);">¥${approvedAmount}</p>
                             </div>
                             <div class="stat-card">
-                                <p class="stat-label">平均金額</p>
-                                <p class="stat-value">¥${Math.round(totalAmount / this.reports.length)}</p>
+                                <p class="stat-label">申報報告數量</p>
+                                <p class="stat-value" style="color: var(--info);">${targetReports.length} 件</p>
                             </div>
                         </div>
 
-                        <div class="chart-container">
-                            <h3>按類別統計</h3>
-                            ${Object.entries(categoryTotal).map(([cat, amt]) => {
-                                const percentage = (amt / totalAmount) * 100;
-                                return `
-                                    <div class="category-item">
-                                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem; font-size: 13px;">
-                                            <span>${cat}</span>
-                                            <span style="font-weight: 600; color: var(--primary-color);">¥${amt}</span>
-                                        </div>
-                                        <div class="progress-bar">
-                                            <div class="progress-fill" style="width: ${percentage}%;"></div>
-                                        </div>
+                        <div class="grid grid-2" style="margin-top: 1.5rem;">
+                            <div class="chart-container" style="display: flex; flex-direction: column;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h3 style="margin: 0; font-size: 16px; color: var(--primary-dark);">報帳趨勢分析</h3>
+                                    <div style="display: flex; gap: 0.25rem; background: var(--bg-secondary); padding: 2px; border-radius: 6px;">
+                                        <button id="btnTrendMonth" class="btn-small" style="padding: 4px 8px; font-size: 12px; background: var(--primary-color); color: white; border-radius: 4px;">月度</button>
+                                        <button id="btnTrendQuarter" class="btn-small" style="padding: 4px 8px; font-size: 12px; background: transparent; color: var(--text-secondary); border-radius: 4px;">季度</button>
                                     </div>
-                                `;
-                            }).join('')}
+                                </div>
+                                <div style="flex: 1; position: relative; min-height: 250px;">
+                                    <canvas id="trendChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="chart-container" style="display: flex; flex-direction: column;">
+                                <h3 style="margin-bottom: 1rem; font-size: 16px; color: var(--primary-dark);">費用類別分佈</h3>
+                                <div style="flex: 1; position: relative; min-height: 250px; display: flex; align-items: center; justify-content: center;">
+                                    <canvas id="categoryChart" style="max-height: 250px; max-width: 250px;"></canvas>
+                                </div>
+                            </div>
                         </div>
 
-                        <button class="btn-secondary" data-export="analytics">匯出為 Excel</button>
+                        <div class="card" style="margin-top: 1.5rem; padding: 1.5rem;">
+                            <h3 style="margin-bottom: 1rem; font-size: 18px; color: var(--primary-dark);">類別數據統整</h3>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                <thead>
+                                    <tr style="background: var(--bg-secondary); text-align: left;">
+                                        <th style="padding: 0.75rem; font-weight: 600; color: var(--text-primary);">類別</th>
+                                        <th style="padding: 0.75rem; font-weight: 600; color: var(--text-primary); text-align: right;">報帳總額</th>
+                                        <th style="padding: 0.75rem; font-weight: 600; color: var(--text-primary); text-align: right;">比例</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${categoryRows || '<tr><td colspan="3" style="text-align:center; padding: 2rem; color: var(--text-secondary);">暫無申報數據</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 `;
+            }
+
+            initAnalyticsCharts() {
+                if (typeof Chart === 'undefined') {
+                    setTimeout(() => this.initAnalyticsCharts(), 100);
+                    return;
+                }
+
+                const trendCtx = document.getElementById('trendChart');
+                const categoryCtx = document.getElementById('categoryChart');
+                if (!trendCtx || !categoryCtx) return;
+
+                // 依權限過濾資料範圍
+                const targetReports = this.reports.filter(r => 
+                    this.currentUser.role === 'applicant' ? r.applicantId === this.currentUser.id : true
+                );
+
+                // --- 數據統計算法 ---
+                // 1. 類別統計
+                const catData = {};
+                targetReports.forEach(r => {
+                    catData[r.category] = (catData[r.category] || 0) + r.amount;
+                });
+
+                // 2. 月度統計
+                const monthData = {};
+                targetReports.forEach(r => {
+                    const month = r.date.substring(0, 7); // YYYY-MM
+                    monthData[month] = (monthData[month] || 0) + r.amount;
+                });
+                const sortedMonths = Object.keys(monthData).sort();
+                const monthValues = sortedMonths.map(m => monthData[m]);
+
+                // 3. 季度統計
+                const quarterData = {};
+                targetReports.forEach(r => {
+                    const parts = r.date.split('-');
+                    const year = parts[0];
+                    const month = parseInt(parts[1], 10);
+                    let quarter = 'Q1';
+                    if (month >= 4 && month <= 6) quarter = 'Q2';
+                    else if (month >= 7 && month <= 9) quarter = 'Q3';
+                    else if (month >= 10 && month <= 12) quarter = 'Q4';
+                    
+                    const qKey = `${year}-${quarter}`;
+                    quarterData[qKey] = (quarterData[qKey] || 0) + r.amount;
+                });
+                const sortedQuarters = Object.keys(quarterData).sort();
+                const quarterValues = sortedQuarters.map(q => quarterData[q]);
+
+                const primaryColor = '#D9926E';
+                const chartColors = [
+                    '#D9926E', // 辦公用品 (主色)
+                    '#8B4513', // 出差費用 (深棕)
+                    '#E8D4C8', // 會議費用 (淺橘)
+                    '#4CAF50', // 培訓費用 (綠)
+                    '#2196F3', // 其他 (藍)
+                    '#FFC107'  // 黃
+                ];
+
+                // 4. 初始化類別環形圖
+                const categoryChart = new Chart(categoryCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(catData),
+                        datasets: [{
+                            data: Object.values(catData),
+                            backgroundColor: chartColors.slice(0, Object.keys(catData).length),
+                            borderWidth: 1,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    font: { size: 11 }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // 5. 初始化趨勢圖
+                let currentTrendType = 'month';
+                const trendChart = new Chart(trendCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedMonths,
+                        datasets: [{
+                            label: '報帳總額 (¥)',
+                            data: monthValues,
+                            backgroundColor: 'rgba(217, 146, 110, 0.8)',
+                            borderColor: primaryColor,
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#E8D4C8' },
+                                ticks: { font: { size: 10 } }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { size: 10 } }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+
+                // 6. 綁定 Tab 切換事件
+                const btnTrendMonth = document.getElementById('btnTrendMonth');
+                const btnTrendQuarter = document.getElementById('btnTrendQuarter');
+
+                if (btnTrendMonth && btnTrendQuarter) {
+                    btnTrendMonth.addEventListener('click', () => {
+                        if (currentTrendType === 'month') return;
+                        currentTrendType = 'month';
+                        
+                        btnTrendMonth.style.background = primaryColor;
+                        btnTrendMonth.style.color = 'white';
+                        btnTrendQuarter.style.background = 'transparent';
+                        btnTrendQuarter.style.color = 'var(--text-secondary)';
+
+                        trendChart.data.labels = sortedMonths;
+                        trendChart.data.datasets[0].data = monthValues;
+                        trendChart.update();
+                    });
+
+                    btnTrendQuarter.addEventListener('click', () => {
+                        if (currentTrendType === 'quarter') return;
+                        currentTrendType = 'quarter';
+                        
+                        btnTrendQuarter.style.background = primaryColor;
+                        btnTrendQuarter.style.color = 'white';
+                        btnTrendMonth.style.background = 'transparent';
+                        btnTrendMonth.style.color = 'var(--text-secondary)';
+
+                        trendChart.data.labels = sortedQuarters;
+                        trendChart.data.datasets[0].data = quarterValues;
+                        trendChart.update();
+                    });
+                }
             }
 
             renderUsers() {
