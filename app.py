@@ -165,17 +165,25 @@ def init_db():
         
     # 預填測試申請單
     cursor.execute("SELECT COUNT(*) FROM Expense_Requests")
+   # 預填測試申請單
+    cursor.execute("SELECT COUNT(*) FROM Expense_Requests")
     if cursor.fetchone()[0] == 0:
         # 申請單 1：已自動通過，金額 450，申請人王明 (ID 1)
+        # 💡 修正 1：在 SQL 尾巴加上 RETURNING request_id，並把問號 ? 改成 %s
         cursor.execute("""
         INSERT INTO Expense_Requests (applicant_id, amount, expense_date, category_id, dept_id, status, description, created_at)
-        VALUES (1, 450.0, '2024-01-15', 1, 1, '已通過', '列印紙張', '2024-01-16 10:00:00')
+        VALUES (1, 450.0, '2024-01-15', 1, 1, '已通過', '列印紙張', '2024-01-16 10:00:00') RETURNING request_id
         """)
-        req1_id = cursor.lastrowid
+        
+        # 💡 修正 2：改用 fetchone() 拿回剛剛 Postgres 產生的流水號 ID
+        req1_id = cursor.fetchone()['request_id']
+        
+        # 💡 修正 3：把這段 SQL 的預留記號 ? 改成 %s
         cursor.execute("""
         INSERT INTO Approval_Logs (request_id, approver_id, action, comments, quota_deducted, reviewed_at)
-        VALUES (?, NULL, '系統自動核准', '系統自動核准 (金額 <= 1000)', 0.0, '2024-01-16 10:00:00')
+        VALUES (%s, NULL, '系統自動核准', '系統自動核准 (金額 <= 1000)', 0.0, '2024-01-16 10:00:00')
         """, (req1_id,))
+        
         # 扣除額度
         cursor.execute("UPDATE Users SET current_quota = current_quota - 450.0 WHERE user_id = 1")
         
