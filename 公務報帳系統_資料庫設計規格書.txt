@@ -1,0 +1,204 @@
+公務報帳系統資料庫設計規格書
+本文件係針對公務報帳系統之商務邏輯與正規化資料庫結構進行詳細設計。系統涵蓋「申請者」、「主管」、「管理者」三種角色之權限控管、密碼錯誤鎖定與強制變更、額度階層審核扣除、多附件雲端備份，以及支援報表統計分析與 Excel 匯出等核心功能需求。
+一、 使用者與權限管理模組
+1. Roles (角色主檔)
+欄位名稱
+資料型態
+屬性
+說明
+role_id
+INT
+PK
+角色唯一識別碼
+role_name
+VARCHAR
+Unique
+角色名稱（如：申請者、主管、管理者）
+default_quota
+DECIMAL
+該角色的預設使用額度
+2. Users (使用者主檔)
+欄位名稱
+資料型態
+屬性
+說明
+user_id
+INT
+PK
+使用者唯一識別碼
+last_name
+VARCHAR
+姓氏（用於系統歡迎詞：歡迎XX先生/女士）
+first_name
+VARCHAR
+名字
+gender
+VARCHAR
+性別（M: 先生, F: 女士）
+email
+VARCHAR
+Unique
+登入帳號（電子信箱）
+password_hash
+VARCHAR
+加密後的密碼
+role_id
+INT
+FK
+關聯至 Roles.role_id，決定用戶角色
+current_quota
+DECIMAL
+目前剩餘的可用審核/報帳額度
+login_failures
+INT
+Default 0
+連續登入失敗次數（滿5次觸發鎖IP）
+login_count
+INT
+Default 0
+累計登入次數（滿5次強制進入換密碼頁面）
+status
+VARCHAR
+帳號狀態（啟用、鎖定、已註銷）
+3. IP_Log (IP 登入紀錄表)
+欄位名稱
+資料型態
+屬性
+說明
+log_id
+INT
+PK
+紀錄唯一識別碼
+ip_address
+VARCHAR
+登入當下的 IP 位址（用於鎖定異常IP）
+user_id
+INT
+FK (Nullable)
+關聯至 Users.user_id（若找不到帳號則為 Null）
+is_success
+BOOLEAN
+是否登入成功
+failed_reason
+VARCHAR
+失敗原因（如：密碼錯誤）
+login_time
+TIMESTAMP
+紀錄時間（登入成功後用於篩選並提醒歷史錯誤）
+二、 組織與類別設定模組
+1. Departments (負責單位主檔)
+欄位名稱
+資料型態
+屬性
+說明
+dept_id
+INT
+PK
+單位唯一識別碼
+dept_name
+VARCHAR
+Unique
+單位名稱（如：研發部、業務部、人事處）
+2. Categories (報帳費用類別)
+欄位名稱
+資料型態
+屬性
+說明
+category_id
+INT
+PK
+類別唯一識別碼
+category_name
+VARCHAR
+Unique
+類別名稱（如：差旅費、辦公用品、餐費）
+三、 報帳與審核流程模組
+1. Expense_Requests (報帳申請主檔)
+欄位名稱
+資料型態
+屬性
+說明
+request_id
+INT
+PK
+申請單唯一識別碼
+applicant_id
+INT
+FK
+申請人，關聯至 Users.user_id
+amount
+DECIMAL
+報帳申請總金額
+expense_date
+DATE
+報帳行為發生日期（發票/收據開立日期）
+category_id
+INT
+FK
+關聯至 Categories.category_id
+dept_id
+INT
+FK
+關聯至 Departments.dept_id
+status
+VARCHAR
+最新審核狀態（審核中、已通過、已退回）
+created_at
+TIMESTAMP
+申請單建立與送出時間
+2. Attachments (證明文件表)
+欄位名稱
+資料型態
+屬性
+說明
+file_id
+INT
+PK
+檔案唯一識別碼
+request_id
+INT
+FK
+關聯至 Expense_Requests.request_id (支援單據多圖上傳)
+file_name
+VARCHAR
+原始上傳檔案名稱
+file_url
+VARCHAR
+雲端儲存路徑 (如 AWS S3 或 Google Cloud Storage 連結)
+uploaded_at
+TIMESTAMP
+檔案上傳時間
+3. Approval_Logs (審核歷史紀錄表)
+欄位名稱
+資料型態
+屬性
+說明
+approval_id
+INT
+PK
+審核紀錄唯一識別碼
+request_id
+INT
+FK
+關聯至 Expense_Requests.request_id
+approver_id
+INT
+FK (Nullable)
+審核主管，關聯至 Users.user_id（若系統自動核准則為 Null）
+action
+VARCHAR
+審核動作（系統自動核准、准許通過、退回）
+comments
+TEXT
+主管審核意見或退回之具體理由說明
+quota_deducted
+DECIMAL
+此審核關卡實際扣除該主管之額度金額
+reviewed_at
+TIMESTAMP
+審核/操作時間
+四、 系統商務邏輯與核心機制說明
+1. 歡迎詞與帳號管理：使用者註冊時強制拆分姓氏與性別。系統於前端渲染時，依據 last_name + gender 自動組裝為「歡迎（姓氏）先生/女士」。不論是用戶自行註銷或管理者強制註銷，皆是將 Users.status 變更為 '已註銷'，而非實體刪除，以維護歷史報帳資料的參照完整性。
+2. 密碼安全與 IP 鎖定機制：當 IP_Log 中同一 IP 連續 5 次 is_success = false，系統將封鎖該 IP。當使用者成功登入後，系統會撈取該 user_id 在上次成功登入時間之後的所有失敗紀錄，並彈出提醒。另外，當 Users.login_count >= 5 時，系統攔截器將強制導向至變更密碼頁面，變更成功後將計數歸零。
+3. 階層式額度扣除與自動核准：若金額 <= $1000，系統觸發自動核准，於 Approval_Logs 寫入系統核准紀錄，並直接變更狀態為'已通過'。若金額 > $1000 或帳戶餘額不足，則改為指派上級主管審核。主管審核通過時，系統會扣減該主管的 Users.current_quota，並在 Approval_Logs.quota_deducted 留下扣除流水，達到精準控管。
+4. 雲端資料檢視與 Excel 數據導出：所有歷史單據與審核軌跡皆落庫於雲端資料庫。透過 Expense_Requests 串接 Categories、Departments 及 Users，系統可依據年月或季度進行 GROUP BY 聚合查詢，產出結構化報表、趨勢圖表，並將結果與歷史清單透過後端流式傳輸（Streaming）技術直接匯出為標準 Excel（.xlsx）檔案。

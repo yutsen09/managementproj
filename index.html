@@ -488,31 +488,7 @@
             flex: 1;
         }
 
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem 0.5rem;
-            }
-
-            .grid-auto, .grid-2, .form-row {
-                grid-template-columns: 1fr;
-            }
-
-            .report-item, .review-item {
-                grid-template-columns: 1fr;
-            }
-
-            .page-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .nav-buttons {
-                grid-template-columns: 1fr;
-            }
-        }
-
-
-        /* 嵌入式九宮格驗證 */
+        /* 九宮格驗證 */
         .inline-captcha-container {
             background: var(--bg-secondary);
             border-radius: 12px;
@@ -651,7 +627,6 @@
             color: var(--primary-color);
         }
 
-        /* 驗證成功綠色區塊 */
         .captcha-success-box {
             display: flex;
             align-items: center;
@@ -672,6 +647,29 @@
             from { transform: scale(0.95); opacity: 0; }
             to { transform: scale(1); opacity: 1; }
         }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem 0.5rem;
+            }
+
+            .grid-auto, .grid-2, .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .report-item, .review-item {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .nav-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -682,11 +680,14 @@
             constructor() {
                 this.currentView = 'login';
                 this.currentUser = null;
+                
+                // 通知訊息模態框
                 this.showModal = false;
                 this.modalMessage = '';
                 
                 // 圖片驗證狀態
-                this.captchaVerified = false;
+                this.showCaptchaModal = false;
+                this.pendingAction = null;
                 this.captchaTarget = '';
                 this.captchaTargetKey = '';
                 this.captchaGrid = [];
@@ -704,7 +705,7 @@
                     { id: 202, category: 'car', url: 'https://images.unsplash.com/photo-1668624712983-b44614cd1a86?w=200&auto=format&fit=crop&q=60' },
                     { id: 203, category: 'car', url: 'https://images.unsplash.com/photo-1620584899131-a5ff5f8fbb03?w=200&auto=format&fit=crop&q=60' },
                     { id: 204, category: 'car', url: 'https://images.unsplash.com/photo-1591385048763-4d3471fe0587?w=200&auto=format&fit=crop&q=60' },
-                    { id: 205, category: 'car', url: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=200&auto=format&fit=crop&q=60' },
+                    { id: 502, category: 'car', url: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=200&auto=format&fit=crop&q=60' },
                     // 紅綠燈 (traffic_light)
                     { id: 301, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1458169495136-854e4c39548a?w=200&auto=format&fit=crop&q=60' },
                     { id: 302, category: 'traffic_light', url: 'https://images.unsplash.com/photo-1530652101053-8c0db4fbb5de?w=200&auto=format&fit=crop&q=60' },
@@ -719,48 +720,80 @@
                     { id: 405, category: 'motorcycle', url: 'https://images.unsplash.com/photo-1558980664-2cd663cf8dde?w=200&auto=format&fit=crop&q=60' },
                     // 巴士 (bus)
                     { id: 501, category: 'bus', url: 'https://images.unsplash.com/photo-1529533603088-2333224ac6c5?w=200&auto=format&fit=crop&q=60' },
-                    { id: 502, category: 'bus', url: 'https://images.unsplash.com/photo-1506607541365-d0c9593de494?w=200&auto=format&fit=crop&q=60' },
+                    { id: 205, category: 'bus', url: 'https://images.unsplash.com/photo-1506607541365-d0c9593de494?w=200&auto=format&fit=crop&q=60' },
                     { id: 503, category: 'bus', url: 'https://images.unsplash.com/photo-1591414828873-e22382dae97d?w=200&auto=format&fit=crop&q=60' },
                     { id: 504, category: 'bus', url: 'https://images.unsplash.com/photo-1719210699672-287362b89cbd?w=200&auto=format&fit=crop&q=60' },
                     { id: 505, category: 'bus', url: 'https://images.unsplash.com/photo-1517303650219-83c8b1788c4c?w=200&auto=format&fit=crop&q=60' }
                 ];
 
-                // 初始化數據 (優先從 localStorage 載入)
-                const storedUsers = localStorage.getItem('expense_users');
-                if (storedUsers) {
-                    this.users = JSON.parse(storedUsers);
-                } else {
-                    this.users = [
-                        { id: 1, email: 'applicant@company.com', password: '123456', name: '王明', role: 'applicant', budget: 1000, spent: 450, loginCount: 0, failCount: 0 },
-                        { id: 2, email: 'manager@company.com', password: '123456', name: '李經理', role: 'manager', budget: 50000, spent: 12000, loginCount: 0, failCount: 0 },
-                        { id: 3, email: 'admin@company.com', password: '123456', name: '陳管理員', role: 'admin', budget: 100000, spent: 0, loginCount: 0, failCount: 0 }
-                    ];
-                    localStorage.setItem('expense_users', JSON.stringify(this.users));
-                }
-
-                const storedReports = localStorage.getItem('expense_reports');
-                if (storedReports) {
-                    this.reports = JSON.parse(storedReports);
-                } else {
-                    this.reports = [
-                        { id: 1, applicantId: 1, amount: 450, date: '2024-01-15', category: '辦公用品', department: '市場部', status: 'approved', description: '列印紙張', createdAt: '2024-01-16', hasAttachment: true, processedAt: '2024-01-16', reviewerId: 2, reviewerName: '李經理' },
-                        { id: 2, applicantId: 2, amount: 5000, date: '2024-02-01', category: '出差費用', department: '銷售部', status: 'pending', description: '深圳出差機票酒店', createdAt: '2024-02-02', hasAttachment: true, processedAt: '', reviewerId: null, reviewerName: null }
-                    ];
-                    localStorage.setItem('expense_reports', JSON.stringify(this.reports));
-                }
+                this.users = [];
+                this.reports = [];
+                this.analyticsData = null;
 
                 this.init();
             }
 
-            saveData() {
-                localStorage.setItem('expense_users', JSON.stringify(this.users));
-                localStorage.setItem('expense_reports', JSON.stringify(this.reports));
+            async init() {
+                this.resetCaptcha(false);
+                try {
+                    const user = await this.apiCall('/api/user-info');
+                    this.currentUser = user;
+                    this.currentView = 'dashboard';
+                    await this.loadDataForView('dashboard');
+                } catch (e) {
+                    this.currentView = 'login';
+                    this.currentUser = null;
+                }
+                this.render();
             }
 
-            init() {
-                this.resetCaptcha(false);
+            async apiCall(url, options = {}) {
+                options.credentials = 'include';
+                try {
+                    const response = await fetch(url, options);
+                    const data = await response.json();
+                    if (!response.ok) {
+                        if (data.needsPasswordChange) {
+                            this.currentUser = { needsPasswordChange: true };
+                            this.currentView = 'changePassword';
+                            this.render();
+                        }
+                        throw new Error(data.error || '請求錯誤');
+                    }
+                    return data;
+                } catch (err) {
+                    console.error("API Call Error:", err);
+                    if (err.message !== '未登入') {
+                        this.showMessage(err.message || '連線伺服器失敗');
+                    }
+                    throw err;
+                }
+            }
+
+            async navigateTo(view) {
+                this.currentView = view;
+                await this.loadDataForView(view);
                 this.render();
-                this.attachEventListeners();
+            }
+
+            async loadDataForView(view) {
+                try {
+                    if (view === 'dashboard') {
+                        this.currentUser = await this.apiCall('/api/user-info');
+                        this.reports = await this.apiCall('/api/reports');
+                    } else if (view === 'reports') {
+                        this.reports = await this.apiCall('/api/reports');
+                    } else if (view === 'review') {
+                        this.reports = await this.apiCall('/api/reports/pending');
+                    } else if (view === 'analytics') {
+                        this.analyticsData = await this.apiCall('/api/analytics');
+                        this.reports = await this.apiCall('/api/reports'); 
+                    } else if (view === 'users') {
+                        this.users = await this.apiCall('/api/users');
+                    }
+                } catch (err) {
+                    console.error("Load Data Error:", err);
+                }
             }
 
             showMessage(message) {
@@ -776,7 +809,6 @@
             resetCaptcha(shouldRender = false) {
                 this.captchaVerified = false;
 
-                // 隨機選擇目標主題
                 const categories = [
                     { key: 'bicycle', name: '腳踏車' },
                     { key: 'car', name: '汽車' },
@@ -788,22 +820,17 @@
                 this.captchaTarget = selectedTarget.name;
                 this.captchaTargetKey = selectedTarget.key;
 
-                // 從圖片池中挑選圖片
                 const targetImages = this.captchaImagePool.filter(img => img.category === this.captchaTargetKey);
                 const otherImages = this.captchaImagePool.filter(img => img.category !== this.captchaTargetKey);
 
-                // 隨機生成 3~5 張目標圖片
-                const targetCount = Math.floor(Math.random() * 3) + 3; // 3, 4, 5張
+                const targetCount = Math.floor(Math.random() * 3) + 3; 
                 const shuffledTarget = targetImages.sort(() => 0.5 - Math.random()).slice(0, targetCount);
 
-                // 其餘 9 - targetCount 張為混淆圖片
                 const otherCount = 9 - targetCount;
                 const shuffledOther = otherImages.sort(() => 0.5 - Math.random()).slice(0, otherCount);
 
-                // 合併洗牌
                 const combined = [...shuffledTarget, ...shuffledOther].sort(() => 0.5 - Math.random());
 
-                // 建立九宮格狀態
                 this.captchaGrid = combined.map((img, idx) => ({
                     index: idx,
                     id: img.id,
@@ -817,276 +844,185 @@
                 }
             }
 
-            renderInlineCaptcha() {
-                // 若未完成初始化，則先進行初始化
-                if (!this.captchaGrid || this.captchaGrid.length === 0) {
-                    this.resetCaptcha(false);
-                }
+            async handleLogin(email, password) {
+                try {
+                    const data = await this.apiCall('/api/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
 
-                const gridHtml = this.captchaGrid.map(item => `
-                    <div class="inline-captcha-item ${item.selected ? 'selected' : ''}" data-captcha-idx="${item.index}">
-                        <img src="${item.url}" alt="verification image" />
-                    </div>
-                `).join('');
-
-                return `
-                    <div class="inline-captcha-container">
-                        <div class="inline-captcha-header">
-                            <h3>請選出所有包含</h3>
-                            <h2>${this.captchaTarget}</h2>
-                            <h3>的圖片</h3>
-                        </div>
-                        <div class="inline-captcha-grid">
-                            ${gridHtml}
-                        </div>
-                        <div class="inline-captcha-footer" style="justify-content: flex-end;">
-                            <button class="captcha-btn-refresh" id="btnCaptchaRefresh" title="更新題目" type="button">↻</button>
-                        </div>
-                    </div>
-                `;
-            }
-
-            handleLogin(email, password) {
-                const userIP = 'user-ip';
-
-                // 檢查 IP 鎖定狀態 (持久化於 localStorage)
-                const lockedUntil = parseInt(localStorage.getItem(`ip_locked_until_${userIP}`) || '0');
-                if (Date.now() < lockedUntil) {
-                    const remainingMinutes = Math.ceil((lockedUntil - Date.now()) / (60 * 1000));
-                    this.showMessage(`您的IP已被鎖定，請於 ${remainingMinutes} 分鐘後再試`);
-                    return;
-                }
-
-                const user = this.users.find(u => u.email === email);
-                
-                // 檢查是否輸入錯誤
-                if (!user || user.password !== password) {
-                    // 記錄 IP 嘗試次數
-                    const attempts = (parseInt(localStorage.getItem(`ip_attempts_${userIP}`) || '0')) + 1;
-                    localStorage.setItem(`ip_attempts_${userIP}`, attempts);
-
-                    // 記錄使用者的 failCount
-                    if (user) {
-                        user.failCount = (user.failCount || 0) + 1;
-                        this.saveData();
-                    }
-
-                    if (attempts >= 5) {
-                        // 鎖定 IP 2 小時
-                        const lockTime = Date.now() + 2 * 60 * 60 * 1000;
-                        localStorage.setItem(`ip_locked_until_${userIP}`, lockTime);
-                        localStorage.removeItem(`ip_attempts_${userIP}`);
-                        this.showMessage('密碼錯誤5次，您的IP已被鎖定2小時');
+                    if (data.needsPasswordChange) {
+                        this.currentUser = { needsPasswordChange: true };
+                        this.currentView = 'changePassword';
+                        this.render();
                         return;
                     }
 
-                    this.showMessage(`密碼錯誤，還有${5 - attempts}次機會`);
-                    return;
-                }
-
-                // 檢查密碼更新限制 (累積登入大於等於5次)
-                if (user.loginCount >= 5) {
-                    this.currentUser = { ...user, needsPasswordChange: true };
-                    this.resetCaptcha(false);
-                    this.currentView = 'changePassword';
-                    this.render();
-                    return;
-                }
-
-                // 登入成功處理
-                // 1. 重置此 IP 的錯誤嘗試次數
-                localStorage.removeItem(`ip_attempts_${userIP}`);
-                
-                // 2. 處理歡迎詞與稱謂緩存 (先生/小姐)
-                localStorage.setItem('last_user_name', user.name);
-                if (!localStorage.getItem('last_user_title') || localStorage.getItem('last_user_name_for_title') !== user.name) {
-                    localStorage.setItem('last_user_title', Math.random() > 0.5 ? '先生' : '小姐');
-                    localStorage.setItem('last_user_name_for_title', user.name);
-                }
-
-                // 3. 處理錯誤登入次數提醒
-                let loginAlert = null;
-                if (user.failCount > 0) {
-                    loginAlert = `提醒：您上次有${user.failCount}次登入錯誤`;
-                    user.failCount = 0; // 重置
-                }
-
-                // 4. 增加成功登入次數並儲存資料
-                user.loginCount++;
-                this.saveData(); // 儲存
-
-                // 5. 轉向儀表板
-                this.currentUser = { ...user };
-                this.currentView = 'dashboard';
-                this.render();
-
-                // 6. 彈出警告訊息
-                if (loginAlert) {
-                    this.showMessage(loginAlert);
-                }
-            }
-
-            handleLogout() {
-                this.currentUser = null;
-                this.resetCaptcha(false);
-                this.currentView = 'login';
-                this.render();
-            }
-
-            handleChangePassword(newPassword) {
-                if (newPassword.length < 6) {
-                    this.showMessage('密碼至少6個字符');
-                    return;
-                }
-                
-                const user = this.users.find(u => u.id === this.currentUser.id);
-                if (user) {
-                    user.password = newPassword;
-                    user.loginCount = 0;
-                    this.saveData(); // 儲存新密碼與重設的 loginCount
-                }
-
-                this.currentUser = null;
-                this.resetCaptcha(false);
-                this.currentView = 'login';
-                this.showMessage('密碼已更新');
-                this.render();
-            }
-
-            handleSubmitReport(formData) {
-                const amount = parseFloat(formData.amount);
-                const newReport = {
-                    id: Math.max(...this.reports.map(r => r.id), 0) + 1,
-                    applicantId: this.currentUser.id,
-                    amount: amount,
-                    date: formData.date,
-                    category: formData.category,
-                    department: formData.department,
-                    description: formData.description,
-                    status: amount <= 1000 ? 'approved' : 'pending',
-                    createdAt: new Date().toISOString().split('T')[0],
-                    hasAttachment: formData.hasAttachment,
-                    processedAt: amount <= 1000 ? new Date().toISOString().split('T')[0] : '',
-                    reviewerId: amount <= 1000 ? 3 : null, // 系統自動通過歸類為管理員 id
-                    reviewerName: amount <= 1000 ? '系統自動審核' : null
-                };
-                
-                this.reports.push(newReport);
-                this.saveData(); // 儲存新增的報告
-                this.showMessage(newReport.status === 'approved' ? '報告已自動通過' : '報告已提交等待審批');
-                this.currentView = 'dashboard';
-                this.render();
-            }
-
-            handleApproveReport(reportId) {
-                const report = this.reports.find(r => r.id === reportId);
-                if (report) {
-                    report.status = 'approved';
-                    report.processedAt = new Date().toISOString().split('T')[0];
-                    report.reviewerId = this.currentUser.id;
-                    report.reviewerName = this.currentUser.name;
-                    this.saveData(); // 儲存審核通過狀態
-                    this.showMessage('已通過申請');
-                    this.render();
-                }
-            }
-
-            handleRejectReport(reportId) {
-                const report = this.reports.find(r => r.id === reportId);
-                if (report) {
-                    report.status = 'rejected';
-                    report.processedAt = new Date().toISOString().split('T')[0];
-                    report.reviewerId = this.currentUser.id;
-                    report.reviewerName = this.currentUser.name;
-                    this.saveData(); // 儲存退回狀態
-                    this.showMessage('已退回申請');
-                    this.render();
-                }
-            }
-
-            handleDeleteUser(userId) {
-                const isSelf = this.currentUser && this.currentUser.id === userId;
-                const confirmMsg = isSelf ? '確定要永久註銷您的帳號嗎？此操作無法復原。' : '確定要註銷此帳號嗎？';
-                if (confirm(confirmMsg)) {
-                    this.users = this.users.filter(u => u.id !== userId);
-                    this.saveData(); // 儲存刪除後的使用者清單
-                    this.showMessage('已註銷帳號');
+                    this.currentUser = data.user;
                     
-                    if (isSelf) {
-                        // 清除歡迎詞快取
+                    localStorage.setItem('last_user_name', data.user.name);
+                    if (!localStorage.getItem('last_user_title') || localStorage.getItem('last_user_name_for_title') !== data.user.name) {
+                        localStorage.setItem('last_user_title', data.user.gender === 'M' ? '先生' : '女士');
+                        localStorage.setItem('last_user_name_for_title', data.user.name);
+                    }
+
+                    this.currentView = 'dashboard';
+                    await this.loadDataForView('dashboard');
+                    
+                    if (data.user.failCount > 0) {
+                        this.showMessage(`提醒：您上次有 ${data.user.failCount} 次登入錯誤`);
+                    } else {
+                        this.showMessage("登入成功");
+                    }
+                    this.render();
+                } catch (err) {}
+            }
+
+            async handleLogout() {
+                try {
+                    await this.apiCall('/api/logout', { method: 'POST' });
+                } catch (e) {}
+                this.currentUser = null;
+                this.resetCaptcha(false);
+                this.currentView = 'login';
+                this.render();
+            }
+
+            async handleRegister(name, email, role, password, gender) {
+                try {
+                    const data = await this.apiCall('/api/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, email, role, password, gender })
+                    });
+                    this.showMessage(data.message || '註冊成功！請登入');
+                    this.resetCaptcha(false);
+                    this.currentView = 'login';
+                    this.render();
+                } catch (err) {}
+            }
+
+            async handleChangePassword(newPassword) {
+                if (newPassword.length < 6) {
+                    this.showMessage('密碼至少6個字元');
+                    return;
+                }
+                
+                try {
+                    await this.apiCall('/api/change-password', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ new_password: newPassword })
+                    });
+                    this.showMessage('密碼已更新，請重新登入');
+                    this.currentUser = null;
+                    this.resetCaptcha(false);
+                    this.currentView = 'login';
+                    this.render();
+                } catch (err) {}
+            }
+
+            async handleSubmitReport(formData) {
+                try {
+                    const body = new FormData();
+                    body.append('amount', formData.amount);
+                    body.append('date', formData.date);
+                    body.append('category', formData.category);
+                    body.append('department', formData.department);
+                    body.append('description', formData.description);
+                    if (formData.file) {
+                        body.append('file', formData.file);
+                    }
+
+                    const data = await this.apiCall('/api/reports', {
+                        method: 'POST',
+                        body: body
+                    });
+                    
+                    this.showMessage(data.message);
+                    this.currentView = 'dashboard';
+                    await this.loadDataForView('dashboard');
+                    this.render();
+                } catch (err) {}
+            }
+
+            async handleApproveReport(reportId) {
+                const comments = prompt('請輸入審核意見：', '同意通過');
+                if (comments === null) return;
+                try {
+                    const data = await this.apiCall(`/api/reports/${reportId}/approve`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ comments })
+                    });
+                    this.showMessage(data.message);
+                    await this.loadDataForView(this.currentView);
+                    this.render();
+                } catch (err) {}
+            }
+
+            async handleRejectReport(reportId) {
+                const comments = prompt('請輸入退回原因：', '退回申請');
+                if (comments === null) return;
+                try {
+                    const data = await this.apiCall(`/api/reports/${reportId}/reject`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ comments })
+                    });
+                    this.showMessage(data.message);
+                    await this.loadDataForView(this.currentView);
+                    this.render();
+                } catch (err) {}
+            }
+
+            async handleDeleteUser(userId) {
+                if (confirm('確定要註銷此帳號嗎？')) {
+                    try {
+                        const data = await this.apiCall(`/api/users/${userId}`, {
+                            method: 'DELETE'
+                        });
+                        this.showMessage(data.message);
+                        await this.loadDataForView('users');
+                        this.render();
+                    } catch (err) {}
+                }
+            }
+
+            async deleteSelf() {
+                if (confirm('確定要永久註銷您的帳號嗎？此操作無法復原。')) {
+                    try {
+                        const data = await this.apiCall('/api/users/deactivate-self', {
+                            method: 'POST'
+                        });
+                        this.showMessage(data.message);
                         localStorage.removeItem('last_user_name');
                         localStorage.removeItem('last_user_title');
                         localStorage.removeItem('last_user_name_for_title');
                         this.currentUser = null;
                         this.resetCaptcha(false);
                         this.currentView = 'login';
-                    }
-                    this.render();
+                        this.render();
+                    } catch (err) {}
                 }
-            }
-
-            exportToExcel(data, filename) {
-                let csv = '\uFEFF'; // 加入 BOM 以免 Excel 開啟時中文亂碼
-                
-                const headers = ['申請金額', '日期', '類別', '負責單位', '描述', '是否有付證明文件', '是否通過', '通過/駁回的時間'];
-                csv += headers.join(',') + '\n';
-                
-                data.forEach(report => {
-                    const amountStr = `¥${report.amount}`;
-                    const dateStr = report.date || '';
-                    const categoryStr = report.category || '';
-                    const deptStr = `"${(report.department || '').replace(/"/g, '""')}"`;
-                    const descStr = `"${(report.description || '').replace(/"/g, '""')}"`;
-                    const hasAttachmentStr = report.hasAttachment ? '是' : '否';
-                    
-                    let statusStr = '審核中';
-                    if (report.status === 'approved') {
-                        statusStr = '已通過';
-                    } else if (report.status === 'rejected') {
-                        statusStr = '已退回';
-                    }
-                    
-                    const processedTimeStr = report.processedAt || '無';
-                    
-                    const row = [amountStr, dateStr, categoryStr, deptStr, descStr, hasAttachmentStr, statusStr, processedTimeStr];
-                    csv += row.join(',') + '\n';
-                });
-                
-                const link = document.createElement('a');
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                link.href = URL.createObjectURL(blob);
-                link.download = filename;
-                link.click();
-                this.showMessage('已匯出 Excel');
             }
 
             attachEventListeners() {
                 const app = document.getElementById('app');
                 
-                // 登入表單
+                // 登入表單提交 (觸發彈窗驗證)
                 const loginForm = app.querySelector('#loginForm');
                 if (loginForm) {
                     loginForm.addEventListener('submit', (e) => {
                         e.preventDefault();
-                        
-                        // 檢查九宮格是否選取正確
-                        const incorrect = this.captchaGrid.some(item => {
-                            const isTarget = item.category === this.captchaTargetKey;
-                            return (isTarget && !item.selected) || (!isTarget && item.selected);
-                        });
-
-                        if (incorrect) {
-                            this.showMessage('驗證失敗，請再試一次');
-                            // 自動刷新題目
-                            setTimeout(() => {
-                                this.resetCaptcha(true);
-                            }, 1000);
-                            return;
-                        }
-
                         const email = app.querySelector('#loginEmail').value;
                         const password = app.querySelector('#loginPassword').value;
-                        this.handleLogin(email, password);
+                        
+                        this.pendingAction = { type: 'login', email, password };
+                        this.resetCaptcha(false);
+                        this.showCaptchaModal = true;
+                        this.render();
                     });
                 }
 
@@ -1112,32 +1048,21 @@
                     });
                 }
 
-                // 註冊表單提交
+                // 註冊表單提交 (觸發彈窗驗證)
                 const registerForm = app.querySelector('#registerForm');
                 if (registerForm) {
                     registerForm.addEventListener('submit', (e) => {
                         e.preventDefault();
-
-                        // 檢查九宮格是否選取正確
-                        const incorrect = this.captchaGrid.some(item => {
-                            const isTarget = item.category === this.captchaTargetKey;
-                            return (isTarget && !item.selected) || (!isTarget && item.selected);
-                        });
-
-                        if (incorrect) {
-                            this.showMessage('驗證失敗，請再試一次');
-                            // 自動刷新題目
-                            setTimeout(() => {
-                                this.resetCaptcha(true);
-                            }, 1000);
-                            return;
-                        }
-
                         const name = app.querySelector('#registerName').value;
                         const email = app.querySelector('#registerEmail').value;
                         const role = app.querySelector('#registerRole').value;
                         const password = app.querySelector('#registerPassword').value;
-                        this.handleRegister(name, email, role, password);
+                        const gender = app.querySelector('#registerGender').value;
+
+                        this.pendingAction = { type: 'register', name, email, role, password, gender };
+                        this.resetCaptcha(false);
+                        this.showCaptchaModal = true;
+                        this.render();
                     });
                 }
 
@@ -1151,23 +1076,22 @@
                     });
                 }
 
-                // 拖拽與檔案上傳按鈕連結
-                const uploadArea = app.querySelector('#uploadArea');
-                const attachmentInput = app.querySelector('#attachmentInput');
-                if (uploadArea && attachmentInput) {
-                    uploadArea.addEventListener('click', () => attachmentInput.click());
-                    attachmentInput.addEventListener('change', (e) => {
-                        if (e.target.files && e.target.files.length > 0) {
-                            app.querySelector('#uploadStatus').innerText = `已選擇文件: ${e.target.files[0].name}`;
-                            uploadArea.style.borderColor = 'var(--primary-color)';
-                            uploadArea.style.background = 'rgba(217, 146, 110, 0.05)';
-                        }
-                    });
-                }
-
                 // 新建報告表單
                 const newReportForm = app.querySelector('#newReportForm');
                 if (newReportForm) {
+                    const uploadArea = app.querySelector('#uploadArea');
+                    const attachmentInput = app.querySelector('#attachmentInput');
+                    if (uploadArea && attachmentInput) {
+                        uploadArea.addEventListener('click', () => attachmentInput.click());
+                        attachmentInput.addEventListener('change', (e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                                app.querySelector('#uploadStatus').innerText = `已選擇文件: ${e.target.files[0].name}`;
+                                uploadArea.style.borderColor = 'var(--primary-color)';
+                                uploadArea.style.background = 'rgba(217, 146, 110, 0.05)';
+                            }
+                        });
+                    }
+
                     newReportForm.addEventListener('submit', (e) => {
                         e.preventDefault();
                         const attachmentInput = app.querySelector('#attachmentInput');
@@ -1177,7 +1101,7 @@
                             category: app.querySelector('#category').value,
                             department: app.querySelector('#department').value,
                             description: app.querySelector('#description').value,
-                            hasAttachment: attachmentInput && attachmentInput.files && attachmentInput.files.length > 0
+                            file: attachmentInput && attachmentInput.files && attachmentInput.files.length > 0 ? attachmentInput.files[0] : null
                         };
                         this.handleSubmitReport(formData);
                     });
@@ -1190,15 +1114,14 @@
 
                 // 使用者自己註銷帳號
                 app.querySelectorAll('[data-action="delete-self"]').forEach(btn => {
-                    btn.addEventListener('click', () => this.handleDeleteUser(this.currentUser.id));
+                    btn.addEventListener('click', () => this.deleteSelf());
                 });
 
                 // 返回按鈕
                 app.querySelectorAll('[data-action="back"]').forEach(btn => {
                     btn.addEventListener('click', (e) => {
                         const view = e.target.dataset.view;
-                        this.currentView = view;
-                        this.render();
+                        this.navigateTo(view);
                     });
                 });
 
@@ -1207,8 +1130,7 @@
                     btn.addEventListener('click', (e) => {
                         if (!e.target.hasAttribute('data-action')) {
                             const view = e.target.dataset.view;
-                            this.currentView = view;
-                            this.render();
+                            this.navigateTo(view);
                         }
                     });
                 });
@@ -1228,8 +1150,6 @@
                     });
                 });
 
-
-
                 // 刪除用戶
                 app.querySelectorAll('[data-delete-user]').forEach(btn => {
                     btn.addEventListener('click', (e) => {
@@ -1243,19 +1163,18 @@
                     btn.addEventListener('click', (e) => {
                         const type = e.target.dataset.export;
                         if (type === 'reports') {
-                            const userReports = this.reports.filter(r => 
-                                this.currentUser.role === 'applicant' ? r.applicantId === this.currentUser.id : true
-                            );
-                            this.exportToExcel(userReports, 'reports.csv');
+                            window.open('/api/export/reports', '_blank');
+                            this.showMessage('已匯出 Excel');
                         } else if (type === 'analytics') {
-                            this.exportToExcel(this.reports, 'analytics.csv');
+                            window.open('/api/export/analytics', '_blank');
+                            this.showMessage('已匯出 Excel');
                         }
                     });
                 });
 
-                // 關閉彈窗
+                // 關閉一般消息彈窗
                 const modalOverlay = app.querySelector('.modal-overlay');
-                if (modalOverlay) {
+                if (modalOverlay && modalOverlay.id !== 'captchaModalOverlay') {
                     modalOverlay.addEventListener('click', (e) => {
                         if (e.target === modalOverlay) {
                             this.showModal = false;
@@ -1276,13 +1195,53 @@
                     });
                 });
 
-
-
-                // 刷新按鈕
+                // 驗證彈窗 - 刷新按鈕
                 const btnCaptchaRefresh = app.querySelector('#btnCaptchaRefresh');
                 if (btnCaptchaRefresh) {
                     btnCaptchaRefresh.addEventListener('click', () => {
                         this.resetCaptcha(true);
+                    });
+                }
+
+                // 驗證彈窗 - 取消按鈕
+                const btnCaptchaCancel = app.querySelector('#btnCaptchaCancel');
+                if (btnCaptchaCancel) {
+                    btnCaptchaCancel.addEventListener('click', () => {
+                        this.showCaptchaModal = false;
+                        this.pendingAction = null;
+                        this.render();
+                    });
+                }
+
+                // 驗證彈窗 - 確認驗證按鈕
+                const btnCaptchaVerify = app.querySelector('#btnCaptchaVerify');
+                if (btnCaptchaVerify) {
+                    btnCaptchaVerify.addEventListener('click', () => {
+                        const incorrect = this.captchaGrid.some(item => {
+                            const isTarget = item.category === this.captchaTargetKey;
+                            return (isTarget && !item.selected) || (!isTarget && item.selected);
+                        });
+
+                        if (incorrect) {
+                            this.showMessage('驗證失敗，請再試一次');
+                            setTimeout(() => {
+                                this.resetCaptcha(true);
+                            }, 1000);
+                            return;
+                        }
+
+                        // 驗證通過，執行原暫存操作
+                        this.showCaptchaModal = false;
+                        const action = this.pendingAction;
+                        this.pendingAction = null;
+                        
+                        if (action) {
+                            if (action.type === 'login') {
+                                this.handleLogin(action.email, action.password);
+                            } else if (action.type === 'register') {
+                                this.handleRegister(action.name, action.email, action.role, action.password, action.gender);
+                            }
+                        }
                     });
                 }
             }
@@ -1333,7 +1292,7 @@
                     app.innerHTML = this.renderUsers();
                 }
 
-                // 添加通知
+                // 消息彈窗
                 if (this.showModal) {
                     const modal = document.createElement('div');
                     modal.className = 'modal-overlay';
@@ -1345,45 +1304,47 @@
                     app.appendChild(modal);
                 }
 
+                // 驗證碼彈窗
+                if (this.showCaptchaModal) {
+                    const captchaModal = document.createElement('div');
+                    captchaModal.className = 'modal-overlay';
+                    captchaModal.id = 'captchaModalOverlay';
+
+                    const gridHtml = this.captchaGrid.map(item => `
+                        <div class="inline-captcha-item ${item.selected ? 'selected' : ''}" data-captcha-idx="${item.index}">
+                            <img src="${item.url}" alt="verification image" />
+                        </div>
+                    `).join('');
+
+                    captchaModal.innerHTML = `
+                        <div class="modal" style="max-width: 400px; padding: 2rem;">
+                            <div class="inline-captcha-container" style="border: none; margin-bottom: 0; box-shadow: none; padding: 0; background: transparent;">
+                                <div class="inline-captcha-header" style="margin-bottom: 1rem;">
+                                    <h3 style="font-size: 14px; font-weight: 500; color: var(--text-secondary);">請選出所有包含</h3>
+                                    <h2 style="font-size: 24px; font-weight: 700; color: var(--primary-color); margin: 0.25rem 0;">${this.captchaTarget}</h2>
+                                    <h3 style="font-size: 14px; font-weight: 500; color: var(--text-secondary);">的圖片</h3>
+                                </div>
+                                <div class="inline-captcha-grid" style="margin-bottom: 1.5rem;">
+                                    ${gridHtml}
+                                </div>
+                                <div class="inline-captcha-footer" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                    <button class="captcha-btn-refresh" id="btnCaptchaRefresh" title="更新題目" type="button">↻</button>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <button class="btn-secondary btn-small" id="btnCaptchaCancel" type="button" style="padding: 0.5rem 1rem;">取消</button>
+                                        <button class="captcha-btn-verify" id="btnCaptchaVerify" type="button" style="padding: 0.5rem 1rem;">驗證</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    app.appendChild(captchaModal);
+                }
+
                 this.attachEventListeners();
 
                 if (this.currentView === 'analytics') {
                     this.initAnalyticsCharts();
                 }
-            }
-
-            handleRegister(name, email, role, password) {
-                const exists = this.users.some(u => u.email.toLowerCase() === email.toLowerCase());
-                if (exists) {
-                    this.showMessage('此帳號已存在');
-                    return;
-                }
-
-                let budget = 1000;
-                if (role === 'manager') {
-                    budget = 50000;
-                } else if (role === 'admin') {
-                    budget = 100000;
-                }
-
-                const newUser = {
-                    id: Math.max(...this.users.map(u => u.id), 0) + 1,
-                    email: email,
-                    password: password,
-                    name: name,
-                    role: role,
-                    budget: budget,
-                    spent: 0,
-                    loginCount: 0,
-                    failCount: 0
-                };
-
-                this.users.push(newUser);
-                this.saveData();
-                this.showMessage('註冊成功！請登入');
-                this.resetCaptcha(false);
-                this.currentView = 'login';
-                this.render();
             }
 
             renderRegister(name = '', email = '', password = '', role = 'applicant') {
@@ -1406,6 +1367,13 @@
                                     </select>
                                 </div>
                                 <div class="form-group">
+                                    <label>性別稱謂</label>
+                                    <select id="registerGender" required>
+                                        <option value="M">男 (先生)</option>
+                                        <option value="F">女 (女士)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
                                     <label>真實姓名</label>
                                     <input type="text" id="registerName" placeholder="輸入姓名" value="${name}" required />
                                 </div>
@@ -1417,7 +1385,6 @@
                                     <label>密碼</label>
                                     <input type="password" id="registerPassword" placeholder="至少6個字元" minlength="6" value="${password}" required />
                                 </div>
-                                ${this.renderInlineCaptcha()}
                                 <button type="submit" class="btn-primary" style="width: 100%; margin-bottom: 1rem;">
                                     註冊
                                 </button>
@@ -1449,7 +1416,6 @@
                                     <label>密碼</label>
                                     <input type="password" id="loginPassword" placeholder="輸入密碼" value="${password}" required />
                                 </div>
-                                ${this.renderInlineCaptcha()}
                                 <button type="submit" class="btn-primary" style="width: 100%;">
                                     登入
                                 </button>
@@ -1483,7 +1449,7 @@
                             <form id="changePasswordForm">
                                 <div class="form-group">
                                     <label>新密碼</label>
-                                    <input type="password" id="newPassword" placeholder="至少6個字符" required />
+                                    <input type="password" id="newPassword" placeholder="至少6個字元" required />
                                 </div>
                                 <button type="submit" class="btn-primary" style="width: 100%; margin-bottom: 0.5rem;">
                                     更新密碼
@@ -1498,23 +1464,16 @@
             }
 
             renderDashboard() {
-                const userReports = this.reports.filter(r => 
-                    this.currentUser.role === 'applicant' ? r.applicantId === this.currentUser.id : true
-                );
+                const userReports = this.reports;
                 const role = this.currentUser.role === 'applicant' ? '申請者' : 
                             this.currentUser.role === 'manager' ? '主管' : '系統管理員';
-
-                // 讀取快取的稱謂
-                let title = localStorage.getItem('last_user_title');
-                if (!title || localStorage.getItem('last_user_name') !== this.currentUser.name) {
-                    title = Math.random() > 0.5 ? '先生' : '小姐';
-                }
+                const genderTitle = this.currentUser.gender === 'M' ? '先生' : '女士';
 
                 return `
                     <div class="container dashboard">
                         <div class="page-header">
                             <div>
-                                <h1>歡迎 ${this.currentUser.name}${title}</h1>
+                                <h1>歡迎 ${this.currentUser.last_name}${genderTitle}</h1>
                                 <p class="welcome-text">${role}</p>
                             </div>
                             <div style="display: flex; gap: 0.5rem; align-items: center;">
@@ -1526,16 +1485,16 @@
                         <div class="grid grid-auto">
                             <div class="stat-card">
                                 <p class="stat-label">額度餘額</p>
-                                <p class="stat-value">¥${this.currentUser.budget - this.currentUser.spent}</p>
-                                <p class="stat-label">已使用: ¥${this.currentUser.spent} / ¥${this.currentUser.budget}</p>
+                                <p class="stat-value">¥${this.currentUser.current_quota.toFixed(2)}</p>
+                                <p class="stat-label">已使用: ¥${this.currentUser.spent.toFixed(2)} / ¥${this.currentUser.budget.toFixed(2)}</p>
                             </div>
                             <div class="stat-card">
                                 <p class="stat-label">待審批</p>
-                                <p class="stat-value">${userReports.filter(r => r.status === 'pending').length}</p>
+                                <p class="stat-value">${userReports.filter(r => r.status === '審核中').length}</p>
                             </div>
                             <div class="stat-card">
                                 <p class="stat-label">已通過</p>
-                                <p class="stat-value">${userReports.filter(r => r.status === 'approved').length}</p>
+                                <p class="stat-value">${userReports.filter(r => r.status === '已通過').length}</p>
                             </div>
                         </div>
 
@@ -1564,7 +1523,7 @@
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label>金額 (¥)</label>
-                                        <input type="number" id="amount" placeholder="0.00" required />
+                                        <input type="number" step="0.01" id="amount" placeholder="0.00" required />
                                     </div>
                                     <div class="form-group">
                                         <label>日期</label>
@@ -1607,9 +1566,7 @@
             }
 
             renderReports() {
-                const userReports = this.reports.filter(r => 
-                    this.currentUser.role === 'applicant' ? r.applicantId === this.currentUser.id : true
-                );
+                const userReports = this.reports;
 
                 return `
                     <div class="container">
@@ -1628,13 +1585,14 @@
                                 <div class="report-item">
                                     <div>
                                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                            <span style="font-size: 16px; font-weight: 600;">¥${report.amount}</span>
-                                            <span class="badge ${report.status === 'approved' ? 'badge-approved' : report.status === 'pending' ? 'badge-pending' : 'badge-rejected'}">
-                                                ${report.status === 'approved' ? '✓ 已通過' : report.status === 'pending' ? '⏳ 審核中' : '✕ 已退回'}
+                                            <span style="font-size: 16px; font-weight: 600;">¥${report.amount.toFixed(2)}</span>
+                                            <span class="badge ${report.status === '已通過' ? 'badge-approved' : report.status === '審核中' ? 'badge-pending' : 'badge-rejected'}">
+                                                ${report.status === '已通過' ? '✓ 已通過' : report.status === '審核中' ? '⏳ 審核中' : '✕ 已退回'}
                                             </span>
                                         </div>
                                         <p class="report-meta">${report.category} • ${report.date} • ${report.department}</p>
                                         <p class="report-meta">${report.description}</p>
+                                        ${report.fileUrl ? `<p class="report-meta">附件: <a href="${report.fileUrl}" target="_blank" style="color: var(--primary-color); text-decoration: underline;">${report.fileName}</a></p>` : ''}
                                     </div>
                                     <button class="btn-secondary btn-small" onclick="alert('報告詳情\\n\\n金額: ¥${report.amount}\\n日期: ${report.date}\\n類別: ${report.category}\\n部門: ${report.department}\\n狀態: ${report.status}\\n描述: ${report.description}')">查看詳情</button>
                                 </div>
@@ -1645,11 +1603,10 @@
             }
 
             renderReview() {
-                const pendingReports = this.reports.filter(r => r.status === 'pending');
+                const pendingReports = this.reports;
 
                 const listHtml = pendingReports.length > 0 ? pendingReports.map(report => {
-                    const applicant = this.users.find(u => u.id === report.applicantId);
-                    const applicantName = applicant ? applicant.name : '未知使用者';
+                    const applicantName = report.applicantName || '未知使用者';
                     return `
                         <div class="review-item">
                             <div>
@@ -1657,11 +1614,12 @@
                                     <div class="avatar">${applicantName.charAt(0)}</div>
                                     <div class="user-details">
                                         <p class="user-name">${applicantName}</p>
-                                        <p class="user-email">申請金額: ¥${report.amount}</p>
+                                        <p class="user-email">申請金額: ¥${report.amount.toFixed(2)}</p>
                                     </div>
                                 </div>
                                 <p>${report.description}</p>
-                                <p class="report-meta">${report.category} • ${report.date}</p>
+                                <p class="report-meta">${report.category} • ${report.date} • ${report.department}</p>
+                                ${report.fileUrl ? `<p class="report-meta">附件: <a href="${report.fileUrl}" target="_blank" style="color: var(--primary-color); text-decoration: underline;">${report.fileName}</a></p>` : ''}
                             </div>
                             <div class="review-buttons">
                                 <button class="btn-success" data-approve="${report.id}">✓ 通過</button>
@@ -1687,27 +1645,19 @@
             }
 
             renderAnalytics() {
-                // 依權限過濾資料範圍
-                const targetReports = this.reports.filter(r => 
-                    this.currentUser.role === 'applicant' ? r.applicantId === this.currentUser.id : true
-                );
-
-                const categoryTotal = targetReports.reduce((acc, r) => {
-                    acc[r.category] = (acc[r.category] || 0) + r.amount;
-                    return acc;
-                }, {});
-                
-                const totalAmount = Object.values(categoryTotal).reduce((a, b) => a + b, 0);
-                const approvedAmount = targetReports
-                    .filter(r => r.status === 'approved')
+                const data = this.analyticsData || { totalAmount: 0, reportCount: 0, averageAmount: 0, categoryTotal: {} };
+                const categoryTotal = data.categoryTotal;
+                const totalAmount = data.totalAmount;
+                const approvedAmount = this.reports
+                    .filter(r => r.status === '已通過')
                     .reduce((a, b) => a + b.amount, 0);
-                
+
                 const categoryRows = Object.entries(categoryTotal).map(([cat, amt]) => {
                     const percentage = totalAmount > 0 ? ((amt / totalAmount) * 100).toFixed(1) : '0.0';
                     return `
                         <tr>
                             <td style="padding: 0.75rem; border-bottom: 0.5px solid var(--border-color);">${cat}</td>
-                            <td style="padding: 0.75rem; border-bottom: 0.5px solid var(--border-color); text-align: right; font-weight: 500;">¥${amt}</td>
+                            <td style="padding: 0.75rem; border-bottom: 0.5px solid var(--border-color); text-align: right; font-weight: 500;">¥${amt.toFixed(2)}</td>
                             <td style="padding: 0.75rem; border-bottom: 0.5px solid var(--border-color); text-align: right; color: var(--text-secondary);">${percentage}%</td>
                         </tr>
                     `;
@@ -1725,15 +1675,15 @@
                         <div class="grid grid-auto">
                             <div class="stat-card">
                                 <p class="stat-label">累積申報總額</p>
-                                <p class="stat-value">¥${totalAmount}</p>
+                                <p class="stat-value">¥${totalAmount.toFixed(2)}</p>
                             </div>
                             <div class="stat-card">
                                 <p class="stat-label">已核准通過總額</p>
-                                <p class="stat-value" style="color: var(--success);">¥${approvedAmount}</p>
+                                <p class="stat-value" style="color: var(--success);">¥${approvedAmount.toFixed(2)}</p>
                             </div>
                             <div class="stat-card">
                                 <p class="stat-label">申報報告數量</p>
-                                <p class="stat-value" style="color: var(--info);">${targetReports.length} 件</p>
+                                <p class="stat-value" style="color: var(--info);">${this.reports.length} 件</p>
                             </div>
                         </div>
 
@@ -1788,28 +1738,21 @@
                 const categoryCtx = document.getElementById('categoryChart');
                 if (!trendCtx || !categoryCtx) return;
 
-                // 依權限過濾資料範圍
-                const targetReports = this.reports.filter(r => 
-                    this.currentUser.role === 'applicant' ? r.applicantId === this.currentUser.id : true
-                );
+                const targetReports = this.reports;
 
-                // --- 數據統計算法 ---
-                // 1. 類別統計
                 const catData = {};
                 targetReports.forEach(r => {
                     catData[r.category] = (catData[r.category] || 0) + r.amount;
                 });
 
-                // 2. 月度統計
                 const monthData = {};
                 targetReports.forEach(r => {
-                    const month = r.date.substring(0, 7); // YYYY-MM
+                    const month = r.date.substring(0, 7); 
                     monthData[month] = (monthData[month] || 0) + r.amount;
                 });
                 const sortedMonths = Object.keys(monthData).sort();
                 const monthValues = sortedMonths.map(m => monthData[m]);
 
-                // 3. 季度統計
                 const quarterData = {};
                 targetReports.forEach(r => {
                     const parts = r.date.split('-');
@@ -1828,15 +1771,14 @@
 
                 const primaryColor = '#D9926E';
                 const chartColors = [
-                    '#D9926E', // 辦公用品 (主色)
-                    '#8B4513', // 出差費用 (深棕)
-                    '#E8D4C8', // 會議費用 (淺橘)
-                    '#4CAF50', // 培訓費用 (綠)
-                    '#2196F3', // 其他 (藍)
-                    '#FFC107'  // 黃
+                    '#D9926E', 
+                    '#8B4513', 
+                    '#E8D4C8', 
+                    '#4CAF50', 
+                    '#2196F3', 
+                    '#FFC107'  
                 ];
 
-                // 4. 初始化類別環形圖
                 const categoryChart = new Chart(categoryCtx, {
                     type: 'doughnut',
                     data: {
@@ -1863,7 +1805,6 @@
                     }
                 });
 
-                // 5. 初始化趨勢圖
                 let currentTrendType = 'month';
                 const trendChart = new Chart(trendCtx, {
                     type: 'bar',
@@ -1898,7 +1839,6 @@
                     }
                 });
 
-                // 6. 綁定 Tab 切換事件
                 const btnTrendMonth = document.getElementById('btnTrendMonth');
                 const btnTrendQuarter = document.getElementById('btnTrendQuarter');
 
@@ -1934,6 +1874,7 @@
             }
 
             renderUsers() {
+                const usersList = this.users || [];
                 return `
                     <div class="container">
                         <a class="back-link" data-action="back" data-view="dashboard">← 返回</a>
@@ -1941,7 +1882,7 @@
                         <h2>用戶管理</h2>
 
                         <div class="report-list">
-                            ${this.users.map(user => `
+                            ${usersList.map(user => `
                                 <div class="report-item">
                                     <div class="user-info" style="margin-bottom: 0;">
                                         <div class="avatar">${user.name.charAt(0)}</div>
@@ -1949,11 +1890,14 @@
                                             <p class="user-name">${user.name}</p>
                                             <p class="user-email">${user.email}</p>
                                             <p class="report-meta">
-                                                額度: ¥${user.budget} | 角色: ${user.role === 'applicant' ? '申請者' : user.role === 'manager' ? '主管' : '管理員'}
+                                                可用額度: ¥${user.current_quota.toFixed(2)} | 預設總額: ¥${user.budget.toFixed(2)}
+                                            </p>
+                                            <p class="report-meta">
+                                                角色: ${user.role === 'applicant' ? '申請者' : user.role === 'manager' ? '主管' : '管理員'} | 狀態: ${user.status}
                                             </p>
                                         </div>
                                     </div>
-                                    <button class="btn-danger" data-delete-user="${user.id}">註銷帳號</button>
+                                    ${user.status !== '已註銷' ? `<button class="btn-danger" data-delete-user="${user.id}">註銷帳號</button>` : '<span class="badge badge-rejected">已註銷</span>'}
                                 </div>
                             `).join('')}
                         </div>
@@ -1962,7 +1906,6 @@
             }
         }
 
-        // 啟動應用
         window.addEventListener('DOMContentLoaded', () => {
             new ExpenseReportApp();
         });
