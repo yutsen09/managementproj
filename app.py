@@ -217,3 +217,4 @@ def login():
     user_info = {
         "id": user['user_id'],
         "email": user['email'],
+    }
