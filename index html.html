@@ -1,0 +1,2339 @@
+我
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>公務報帳系統</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            font-size: 16px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            background: #FFFBF5;
+            color: #333;
+        }
+
+        :root {
+            --primary-color: #D9926E;
+            --primary-dark: #8B4513;
+            --primary-light: #E8D4C8;
+            --success: #4CAF50;
+            --danger: #F44336;
+            --warning: #FFC107;
+            --info: #2196F3;
+            --bg-primary: #FFFFFF;
+            --bg-secondary: #F5F1ED;
+            --bg-tertiary: #FFF8F0;
+            --text-primary: #2C2C2A;
+            --text-secondary: #888780;
+            --text-tertiary: #B4B2A9;
+            --border-color: #E8D4C8;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+
+        button,
+        input[type="button"],
+        input[type="submit"] {
+            cursor: pointer;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: white;
+            padding: 0.75rem 1.5rem;
+        }
+
+        .btn-primary:hover {
+            background: #C97B4A;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(217, 146, 110, 0.3);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--primary-color);
+            border: 1px solid var(--primary-color);
+            padding: 0.75rem 1.5rem;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(217, 146, 110, 0.1);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+            padding: 0.5rem 1rem;
+            font-size: 13px;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+            padding: 0.5rem 1rem;
+            font-size: 13px;
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 13px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 0.5px solid var(--border-color);
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(217, 146, 110, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-primary);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .card {
+            background: var(--bg-primary);
+            border: 0.5px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .card h2 {
+            font-size: 24px;
+            color: var(--primary-dark);
+            margin: 0 0 1.5rem 0;
+        }
+
+        .card h3 {
+            font-size: 18px;
+            color: var(--primary-dark);
+            margin: 0 0 1rem 0;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            border: 0.5px solid var(--border-color);
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        .grid {
+            display: grid;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .grid-auto {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+
+        .grid-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-approved {
+            background: #E8F5E9;
+            color: #2E7D32;
+        }
+
+        .badge-pending {
+            background: #FFF8E1;
+            color: #F57F17;
+        }
+
+        .badge-rejected {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+
+        .login-container {
+            background: linear-gradient(135deg, #FFF5E6 0%, #FFF8F0 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .login-box {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            border: 0.5px solid var(--border-color);
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 8px 32px rgba(217, 146, 110, 0.15);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .login-icon {
+            font-size: 40px;
+            margin-bottom: 1rem;
+        }
+
+        .login-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--primary-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        .login-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .demo-accounts {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .demo-accounts p {
+            margin: 0.25rem 0;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 0.5px solid var(--border-color);
+        }
+
+        .page-header h1 {
+            margin: 0;
+            font-size: 28px;
+            color: var(--primary-dark);
+        }
+
+        .welcome-text {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 0.25rem;
+        }
+
+        .report-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .report-item {
+            background: var(--bg-primary);
+            border: 0.5px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1rem;
+            align-items: start;
+            transition: all 0.3s;
+        }
+
+        .report-item:hover {
+            box-shadow: 0 4px 12px rgba(217, 146, 110, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .report-content h4 {
+            margin: 0 0 0.5rem 0;
+            font-size: 16px;
+            color: var(--text-primary);
+        }
+
+        .report-meta {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin: 0.5rem 0 0 0;
+        }
+
+        .report-actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-direction: column;
+            min-width: 120px;
+        }
+
+        .dashboard {
+            padding: 2rem 0;
+        }
+
+        .nav-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-container {
+            background: var(--bg-primary);
+            border: 0.5px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-bar {
+            background: var(--bg-secondary);
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 0.25rem;
+        }
+
+        .progress-fill {
+            background: var(--primary-color);
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+
+        .category-item {
+            margin-bottom: 1rem;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #FFF0E6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 16px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .user-details p {
+            margin: 0;
+        }
+
+        .user-name {
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .user-email {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .review-item {
+            background: var(--bg-primary);
+            border: 0.5px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 1.5rem;
+            align-items: start;
+            margin-bottom: 1rem;
+        }
+
+        .review-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1.5rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+
+        .back-link:hover {
+            color: var(--primary-color);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 1rem;
+        }
+
+        .modal {
+            background: var(--bg-primary);
+            border-radius: 12px;
+            padding: 2rem;
+            max-width: 500px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary-dark);
+        }
+
+        .modal-content {
+            margin-bottom: 1.5rem;
+            color: var(--text-secondary);
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem 0.5rem;
+            }
+
+            .grid-auto,
+            .grid-2,
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .report-item,
+            .review-item {
+                grid-template-columns: 1fr;
+            }
+
+            .page-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .nav-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ============ 九宮格驗證碼樣式 ============ */
+        .captcha-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            padding: 1rem;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .captcha-modal {
+            background: var(--bg-primary);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .captcha-header {
+            background: var(--primary-color);
+            color: white;
+            padding: 1.25rem;
+            text-align: center;
+        }
+
+        .captcha-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .captcha-subtitle {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+
+        .captcha-target {
+            font-weight: 700;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 0.25rem;
+        }
+
+        .captcha-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            padding: 1rem;
+            background: var(--bg-secondary);
+        }
+
+        .captcha-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 3px solid transparent;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .captcha-item:hover {
+            transform: scale(1.03);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .captcha-item.selected {
+            border-color: var(--primary-color);
+            box-shadow: inset 0 0 0 9999px rgba(0, 0, 0, 0.05);
+        }
+
+        .captcha-item .checkmark {
+            display: none;
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: var(--primary-color);
+            color: white;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            z-index: 2;
+        }
+
+        .captcha-item.selected .checkmark {
+            display: flex;
+        }
+
+        .captcha-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-top: 1px solid var(--border-color);
+            background: var(--bg-primary);
+        }
+
+        .captcha-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-refresh {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 20px;
+            padding: 0.5rem;
+            cursor: pointer;
+            transition: color 0.2s, transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+        }
+
+        .btn-refresh:hover {
+            color: var(--primary-color);
+            background: var(--bg-secondary);
+            transform: rotate(180deg);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* ============ 雲端同步狀態樣式 ============ */
+        .cloud-sync-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(76, 175, 80, 0.1);
+            color: #2E7D32;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+
+        .sync-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse-dot 1.5s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+
+            50% {
+                transform: scale(1.2);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app"></div>
+
+    <script>
+        // ============ 應用程序核心 ============
+        class ExpenseReportApp {
+            constructor() {
+                this.currentView = 'login';
+                this.currentUser = null;
+                this.showModal = false;
+                this.modalMessage = '';
+                this.showStatusModal = false;
+                this.statusModalContent = '';
+
+                // 初始化數據 (從 localStorage 模擬雲端讀取)
+                const savedUsers = localStorage.getItem('office_expense_users');
+                if (savedUsers) {
+                    this.users = JSON.parse(savedUsers);
+                } else {
+                    this.users = [
+                        { id: 1, email: 'applicant@company.com', password: '123456', name: '王明', role: 'applicant', gender: 'M', budget: 1000, spent: 450, loginCount: 0, failCount: 0 },
+                        { id: 2, email: 'manager@company.com', password: '123456', name: '李經理', role: 'manager', gender: 'M', budget: 50000, spent: 12000, loginCount: 0, failCount: 0 },
+                        { id: 3, email: 'admin@company.com', password: '123456', name: '陳管理員', role: 'admin', gender: 'M', budget: 100000, spent: 0, loginCount: 0, failCount: 0 }
+                    ];
+                    this.saveUsersToStorage();
+                }
+
+                const savedReports = localStorage.getItem('office_expense_reports');
+                if (savedReports) {
+                    this.reports = JSON.parse(savedReports);
+                } else {
+                    this.reports = [
+                        { id: 1, applicantId: 1, amount: 450, date: '2024-01-15', category: '辦公用品', department: '市場部', status: 'approved', description: '列印紙張', createdAt: '2024-01-16', comments: '符合規範，予以通過', reviewerId: 2 },
+                        { id: 2, applicantId: 2, amount: 5000, date: '2024-02-01', category: '出差費用', department: '銷售部', status: 'pending', description: '深圳出差機票酒店', createdAt: '2024-02-02', comments: '' }
+                    ];
+                    this.saveReportsToStorage();
+                }
+
+                this.loginAttempts = {};
+                this.lockedIPs = new Set();
+
+                // 驗證碼狀態與圖示池
+                this.showCaptchaModal = false;
+                this.captchaTarget = '';
+                this.captchaTargetKey = '';
+                this.captchaGrid = [];
+                this.pendingAction = null;
+                this.captchaIconPool = {
+                    car: ['🚗', '🏎️', '🚓', '🚕', '🚙', '🚌', '🚛', '🚜', '🚘'],
+                    food: ['🍕', '🍔', '🍟', '🍩', '🍰', '🍣', '🌮', '🥗', '🍦', '🍜'],
+                    insect: ['🐞', '🐛', '🐝', '🐜', '🦋', '🦗', '🦟', '🕷️', '🦂']
+                };
+
+                // 表單輸入內容暫存（不含密碼，避免重繪遺失）
+                this.loginEmailVal = '';
+                this.regNameVal = '';
+                this.regEmailVal = '';
+                this.regRoleVal = 'applicant';
+                this.regGenderVal = 'M';
+                this.newReportAmountVal = '';
+                this.newReportDateVal = new Date().toISOString().split('T')[0];
+                this.newReportCategoryVal = '辦公用品';
+                this.newReportDepartmentVal = '';
+                this.newReportDescriptionVal = '';
+
+                this.init();
+            }
+
+            saveUsersToStorage() {
+                localStorage.setItem('office_expense_users', JSON.stringify(this.users));
+            }
+
+            saveReportsToStorage() {
+                localStorage.setItem('office_expense_reports', JSON.stringify(this.reports));
+            }
+
+            resetCaptcha() {
+                const categories = [
+                    { name: '車子', key: 'car' },
+                    { name: '美食', key: 'food' },
+                    { name: '昆蟲', key: 'insect' }
+                ];
+
+                const targetIdx = Math.floor(Math.random() * categories.length);
+                const target = categories[targetIdx];
+                this.captchaTarget = target.name;
+                this.captchaTargetKey = target.key;
+
+                const targetCount = 3 + Math.floor(Math.random() * 3); // 3, 4, or 5 target icons
+
+                const targetPool = [...this.captchaIconPool[target.key]];
+                const targetIcons = [];
+                for (let i = 0; i < targetCount; i++) {
+                    const idx = Math.floor(Math.random() * targetPool.length);
+                    targetIcons.push({
+                        icon: targetPool.splice(idx, 1)[0],
+                        category: target.key,
+                        selected: false
+                    });
+                }
+
+                const otherCategories = categories.filter(c => c.key !== target.key);
+                const otherPool = [];
+                otherCategories.forEach(c => {
+                    otherPool.push(...this.captchaIconPool[c.key].map(icon => ({
+                        icon: icon,
+                        category: c.key,
+                        selected: false
+                    })));
+                });
+
+                const otherIcons = [];
+                const otherCount = 9 - targetCount;
+                for (let i = 0; i < otherCount; i++) {
+                    const idx = Math.floor(Math.random() * otherPool.length);
+                    otherIcons.push(otherPool.splice(idx, 1)[0]);
+                }
+
+                const combined = [...targetIcons, ...otherIcons];
+                for (let i = combined.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [combined[i], combined[j]] = [combined[j], combined[i]];
+                }
+
+                this.captchaGrid = combined.map((item, idx) => ({ ...item, id: idx }));
+            }
+
+            init() {
+                this.render();
+                this.attachEventListeners();
+            }
+
+            showMessage(message) {
+                this.modalMessage = message;
+                this.showModal = true;
+                this.render();
+                setTimeout(() => {
+                    this.showModal = false;
+                    this.render();
+                }, 3000);
+            }
+
+            handleLogin(email, password) {
+                const userIP = 'user-ip';
+
+                if (this.lockedIPs.has(userIP)) {
+                    this.showMessage('您的IP已被鎖定，請稍後再試');
+                    return;
+                }
+
+                const user = this.users.find(u => u.email === email);
+                if (!user) {
+                    this.showMessage('帳號錯誤');
+                    return;
+                }
+
+                if (user.password !== password) {
+                    user.failCount = (user.failCount || 0) + 1;
+                    this.saveUsersToStorage();
+
+                    const attempts = (this.loginAttempts[userIP] || 0) + 1;
+                    this.loginAttempts[userIP] = attempts;
+
+                    if (attempts >= 5) {
+                        this.lockedIPs.add(userIP);
+                        this.showMessage('密碼錯誤5次，您的IP已被鎖定2小時');
+                        return;
+                    }
+
+                    this.showMessage(`密碼錯誤，還有${5 - attempts}次機會`);
+                    return;
+                }
+
+
+                // 防呆：如果登入次數已經大於或等於 5 次但沒換密碼，依然強制進入換密碼頁面
+                if (user.loginCount >= 5) {
+                    this.currentUser = { ...user, needsPasswordChange: true };
+                    this.currentView = 'changePassword';
+                    this.render();
+                    return;
+                }
+
+                user.loginCount++;
+                this.currentUser = { ...user };
+                this.loginAttempts[userIP] = 0;
+                this.saveUsersToStorage();
+
+                // 檢查本次成功登入後，累積登入次數是否剛好達到第 5 次
+                if (user.loginCount >= 5) {
+                    const tempFailCount = user.failCount || 0;
+                    user.failCount = 0; // 重設錯誤次數
+                    this.saveUsersToStorage();
+
+                    this.currentUser.needsPasswordChange = true;
+                    this.currentView = 'changePassword';
+                    this.render();
+
+                    if (tempFailCount > 0) {
+                        this.showMessage(`提醒：您上次有 ${tempFailCount} 次登入錯誤。您的帳號已累積登入 5 次，請更改密碼`);
+                    } else {
+                        this.showMessage('您的帳號已累積登入 5 次，請更改密碼');
+                    }
+                    return;
+                }
+
+                this.loginEmailVal = '';
+                this.currentView = 'dashboard';
+
+                if (user.role === 'applicant') {
+                    const myReports = this.reports.filter(r => r.applicantId === user.id);
+                    if (myReports.length > 0) {
+                        const approvedList = myReports.filter(r => r.status === 'approved');
+                        const rejectedList = myReports.filter(r => r.status === 'rejected');
+                        const pendingList = myReports.filter(r => r.status === 'pending');
+
+                        let notifyHtml = `<p>您目前有新進展的報帳申請狀態如下：</p><br/>`;
+                        notifyHtml += `<p>• <b>已核准</b>：${approvedList.length} 件</p>`;
+                        notifyHtml += `<p>• <b>已退回</b>：${rejectedList.length} 件</p>`;
+                        notifyHtml += `<p>• <b>審核中</b>：${pendingList.length} 件</p><br/>`;
+
+                        const recentUpdates = [...approvedList, ...rejectedList]
+                            .sort((a, b) => b.id - a.id)
+                            .slice(0, 3);
+                        if (recentUpdates.length > 0) {
+                            notifyHtml += `<p><b>近期審核意見回饋：</b></p>`;
+                            recentUpdates.forEach((r, idx) => {
+                                const statusBadge = r.status === 'approved'
+                                    ? `<span style="color: var(--success); font-weight: 600;">已核准</span>`
+                                    : `<span style="color: var(--danger); font-weight: 600;">已退回</span>`;
+                                notifyHtml += `<p style="margin-top: 0.25rem;">${idx + 1}. 金額: ¥${r.amount} (${r.category}) - ${statusBadge}</p>`;
+                                if (r.comments) {
+                                    notifyHtml += `<p style="margin-left: 1rem; color: var(--text-secondary); font-style: italic;">💬 審核意見: "${r.comments}"</p>`;
+                                } else {
+                                    notifyHtml += `<p style="margin-left: 1rem; color: var(--text-secondary); font-style: italic;">💬 審核意見: (無)</p>`;
+                                }
+                            });
+                        }
+
+                        this.statusModalContent = notifyHtml;
+                        this.showStatusModal = true;
+                    }
+                } else if (user.role === 'manager') {
+                    // 主管登入彈窗通知
+                    // 1. 待審核的報告
+                    const pendingReviewList = this.reports.filter(r => r.status === 'pending');
+
+                    // 2. 主管自己申請的報告
+                    const myReports = this.reports.filter(r => r.applicantId === user.id);
+                    const myApprovedList = myReports.filter(r => r.status === 'approved');
+                    const myRejectedList = myReports.filter(r => r.status === 'rejected');
+                    const myPendingList = myReports.filter(r => r.status === 'pending');
+
+                    let notifyHtml = `<p>您好，目前公務報帳系統有以下動態需要您處理/關注：</p><br/>`;
+                    notifyHtml += `<p>📋 <b>審核工作通知：</b></p>`;
+                    notifyHtml += `<p>• <b>待您審核的報告</b>：<span style="color: var(--warning); font-weight: 600;">${pendingReviewList.length} 件</span></p><br/>`;
+
+                    notifyHtml += `<p>👤 <b>您個人申請的報告狀態：</b></p>`;
+                    notifyHtml += `<p>• <b>已核准</b>：${myApprovedList.length} 件</p>`;
+                    notifyHtml += `<p>• <b>已退回</b>：${myRejectedList.length} 件</p>`;
+                    notifyHtml += `<p>• <b>審核中</b>：${myPendingList.length} 件</p><br/>`;
+
+                    const myRecentUpdates = [...myApprovedList, ...myRejectedList]
+                        .sort((a, b) => b.id - a.id)
+                        .slice(0, 3);
+
+                    if (myRecentUpdates.length > 0) {
+                        notifyHtml += `<p><b>您個人申請的近期意見回饋：</b></p>`;
+                        myRecentUpdates.forEach((r, idx) => {
+                            const statusBadge = r.status === 'approved'
+                                ? `<span style="color: var(--success); font-weight: 600;">已核准</span>`
+                                : `<span style="color: var(--danger); font-weight: 600;">已退回</span>`;
+                            notifyHtml += `<p style="margin-top: 0.25rem;">${idx + 1}. 金額: ¥${r.amount} (${r.category}) - ${statusBadge}</p>`;
+                            if (r.comments) {
+                                notifyHtml += `<p style="margin-left: 1rem; color: var(--text-secondary); font-style: italic;">💬 審核意見: "${r.comments}"</p>`;
+                            }
+                        });
+                    }
+
+                    this.statusModalContent = notifyHtml;
+                    this.showStatusModal = true;
+                }
+
+                if (user.failCount > 0) {
+                    this.showMessage(`提醒：您上次有 ${user.failCount} 次登入錯誤`);
+                    user.failCount = 0; // 重設錯誤次數
+                    this.saveUsersToStorage();
+                }
+                this.render();
+            }
+
+            handleLogout() {
+                this.currentUser = null;
+                this.currentView = 'login';
+                this.render();
+            }
+
+            handleChangePassword(newPassword) {
+                if (newPassword.length < 6) {
+                    this.showMessage('密碼至少6個字符');
+                    return;
+                }
+
+                const user = this.users.find(u => u.id === this.currentUser.id);
+                if (user) {
+                    user.password = newPassword;
+                    user.loginCount = 0;
+                    this.saveUsersToStorage();
+                }
+
+                this.currentUser = null;
+                this.currentView = 'login';
+                this.showMessage('密碼已更新');
+                this.render();
+            }
+
+            handleRegister(name, email, role, password, gender) {
+                if (!name || !email || !password || !role || !gender) {
+                    this.showMessage('請填寫所有必要欄位');
+                    return;
+                }
+
+                if (password.length < 6) {
+                    this.showMessage('密碼至少6個字元');
+                    return;
+                }
+
+                const existingUser = this.users.find(u => u.email === email);
+                if (existingUser) {
+                    this.showMessage('此郵箱已被註冊');
+                    return;
+                }
+
+                let budget = 1000;
+                if (role === 'manager') {
+                    budget = 50000;
+                } else if (role === 'admin') {
+                    budget = 100000;
+                }
+
+                const newUser = {
+                    id: Math.max(...this.users.map(u => u.id), 0) + 1,
+                    email: email,
+                    password: password,
+                    name: name,
+                    role: role,
+                    gender: gender,
+                    budget: budget,
+                    spent: 0,
+                    loginCount: 0,
+                    failCount: 0
+                };
+
+                this.users.push(newUser);
+                this.saveUsersToStorage();
+
+                this.regNameVal = '';
+                this.regEmailVal = '';
+                this.regRoleVal = 'applicant';
+                this.regGenderVal = 'M';
+
+                this.showMessage('註冊成功！請登入');
+                this.currentView = 'login';
+                this.render();
+            }
+
+            handleSubmitReport(formData) {
+                const amount = parseFloat(formData.amount);
+                const newReport = {
+                    id: Math.max(...this.reports.map(r => r.id), 0) + 1,
+                    applicantId: this.currentUser.id,
+                    amount: amount,
+                    date: formData.date,
+                    category: formData.category,
+                    department: formData.department,
+                    description: formData.description,
+                    status: 'pending',
+                    createdAt: new Date().toISOString().split('T')[0]
+                };
+
+                this.reports.push(newReport);
+                this.saveReportsToStorage();
+
+                this.newReportAmountVal = '';
+                this.newReportDateVal = new Date().toISOString().split('T')[0];
+                this.newReportCategoryVal = '辦公用品';
+                this.newReportDepartmentVal = '';
+                this.newReportDescriptionVal = '';
+
+                this.showMessage('報告已提交等待審核');
+                this.currentView = 'dashboard';
+                this.render();
+            }
+
+            handleApproveReport(reportId) {
+                const report = this.reports.find(r => r.id === reportId);
+                if (report) {
+                    const comments = prompt('請輸入審核意見：', '符合規範，同意通過');
+                    if (comments === null) return;
+                    report.status = 'approved';
+                    report.comments = comments;
+                    report.reviewerId = this.currentUser.id; // 紀錄核准主管 ID
+
+                    const applicant = this.users.find(u => u.id === report.applicantId);
+                    if (applicant) {
+                        applicant.spent += report.amount;
+                        this.saveUsersToStorage();
+                    }
+                    this.saveReportsToStorage();
+
+                    this.showMessage('已通過該申請，已將結果通知申請者');
+                    this.render();
+                }
+            }
+
+            handleRejectReport(reportId) {
+                const report = this.reports.find(r => r.id === reportId);
+                if (report) {
+                    const comments = prompt('請輸入退回原因 (不符合規範之處)：', '附件證明不齊全，予以退回');
+                    if (comments === null) return;
+                    report.status = 'rejected';
+                    report.comments = comments;
+                    report.reviewerId = this.currentUser.id; // 紀錄退回主管 ID
+                    this.saveReportsToStorage();
+
+                    this.showMessage('已退回該申請，已將原因通知申請者');
+                    this.render();
+                }
+            }
+
+            handleDeleteUser(userId) {
+                if (confirm('確定要註銷此帳號嗎？')) {
+                    this.users = this.users.filter(u => u.id !== userId);
+                    this.saveUsersToStorage();
+                    this.showMessage('已註銷帳號');
+                    this.render();
+                }
+            }
+
+            handleEditUser(userId) {
+                const user = this.users.find(u => u.id === userId);
+                if (!user) return;
+
+                const newRole = prompt('請輸入新的角色編號：\n1: 申請者 (applicant)\n2: 主管 (manager)\n3: 系統管理者 (admin)',
+                    user.role === 'applicant' ? '1' : user.role === 'manager' ? '2' : '3'
+                );
+                if (newRole === null) return;
+
+                let roleKey = user.role;
+                if (newRole === '1') roleKey = 'applicant';
+                else if (newRole === '2') roleKey = 'manager';
+                else if (newRole === '3') roleKey = 'admin';
+
+                const newBudgetStr = prompt('請輸入新的額度預算金額：', user.budget);
+                if (newBudgetStr === null) return;
+                const newBudget = parseFloat(newBudgetStr);
+                if (isNaN(newBudget) || newBudget < 0) {
+                    this.showMessage('無效的額度金額');
+                    return;
+                }
+
+                user.role = roleKey;
+                user.budget = newBudget;
+                if (user.spent > user.budget) {
+                    user.spent = user.budget;
+                }
+                this.saveUsersToStorage();
+                this.showMessage(`用戶 ${user.name} 資料已更新`);
+                this.render();
+            }
+
+            deleteSelf() {
+                if (confirm('確定要永久註銷您的帳號嗎？此操作無法復原。')) {
+                    this.users = this.users.filter(u => u.id !== this.currentUser.id);
+                    this.saveUsersToStorage();
+                    this.currentUser = null;
+                    this.currentView = 'login';
+                    this.showMessage('帳號已註銷');
+                    this.render();
+                }
+            }
+
+            exportToExcel(data, filename) {
+                let csv = '';
+                if (data.length > 0) {
+                    const keyMap = {
+                        id: '報告ID',
+                        applicantId: '申請者ID',
+                        applicantName: '申請者姓名',
+                        amount: '報帳金額(¥)',
+                        date: '費用日期',
+                        category: '費用類別',
+                        department: '負責單位',
+                        status: '審核狀態',
+                        description: '費用描述',
+                        createdAt: '創建時間'
+                    };
+
+                    const originalHeaders = Object.keys(data[0]);
+                    const headers = originalHeaders.map(h => keyMap[h] || h);
+                    csv += headers.join(',') + '\n';
+
+                    data.forEach(row => {
+                        csv += originalHeaders.map(h => {
+                            let val = row[h];
+                            if (val === null || val === undefined) {
+                                val = '';
+                            } else if (h === 'status') {
+                                val = val === 'approved' ? '已通過' : val === 'pending' ? '審核中' : val === 'rejected' ? '已退回' : val;
+                            } else {
+                                val = String(val);
+                            }
+                            if (val.includes(',') || val.includes('\n') || val.includes('"')) {
+                                val = '"' + val.replace(/"/g, '""') + '"';
+                            }
+                            return val;
+                        }).join(',') + '\n';
+                    });
+                }
+
+                const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = filename;
+                link.click();
+                this.showMessage('已匯出 Excel');
+            }
+
+            attachEventListeners() {
+                const app = document.getElementById('app');
+
+                // 登入表單
+                const loginForm = app.querySelector('#loginForm');
+                if (loginForm) {
+                    loginForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const email = app.querySelector('#loginEmail').value;
+                        const password = app.querySelector('#loginPassword').value;
+
+                        this.pendingAction = {
+                            type: 'login',
+                            data: { email, password }
+                        };
+                        this.resetCaptcha();
+                        this.showCaptchaModal = true;
+                        this.render();
+                    });
+                }
+
+                const changePasswordForm = app.querySelector('#changePasswordForm');
+                if (changePasswordForm) {
+                    changePasswordForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const newPassword = app.querySelector('#newPassword').value;
+                        this.handleChangePassword(newPassword);
+                    });
+                }
+
+                // 新建報告表單
+                const newReportForm = app.querySelector('#newReportForm');
+                if (newReportForm) {
+                    newReportForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const formData = {
+                            amount: app.querySelector('#amount').value,
+                            date: app.querySelector('#date').value,
+                            category: app.querySelector('#category').value,
+                            department: app.querySelector('#department').value,
+                            description: app.querySelector('#description').value
+                        };
+                        this.handleSubmitReport(formData);
+                    });
+                }
+
+                // 登出按鈕
+                app.querySelectorAll('[data-action="logout"]').forEach(btn => {
+                    btn.addEventListener('click', () => this.handleLogout());
+                });
+
+                // 使用者自己註銷帳號
+                app.querySelectorAll('[data-action="delete-self"]').forEach(btn => {
+                    btn.addEventListener('click', () => this.deleteSelf());
+                });
+
+                // 返回按鈕
+                app.querySelectorAll('[data-action="back"]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const view = e.target.dataset.view;
+                        this.currentView = view;
+                        this.render();
+                    });
+                });
+
+                // 導航按鈕
+                app.querySelectorAll('[data-view]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        if (!e.target.hasAttribute('data-action')) {
+                            const view = e.target.dataset.view;
+                            this.currentView = view;
+                            this.render();
+                        }
+                    });
+                });
+
+                // 審批按鈕
+                app.querySelectorAll('[data-approve]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const reportId = parseInt(e.target.dataset.approve);
+                        this.handleApproveReport(reportId);
+                    });
+                });
+
+                app.querySelectorAll('[data-reject]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const reportId = parseInt(e.target.dataset.reject);
+                        this.handleRejectReport(reportId);
+                    });
+                });
+
+                // 刪除用戶
+                app.querySelectorAll('[data-delete-user]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const userId = parseInt(e.target.dataset.deleteUser);
+                        this.handleDeleteUser(userId);
+                    });
+                });
+
+                // 編輯用戶
+                app.querySelectorAll('[data-edit-user]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const userId = parseInt(e.target.dataset.editUser);
+                        this.handleEditUser(userId);
+                    });
+                });
+
+                // 匯出按鈕
+                app.querySelectorAll('[data-export]').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const type = e.target.dataset.export;
+                        if (type === 'reports') {
+                            const userReports = this.reports.filter(r =>
+                                this.currentUser.role === 'applicant' ? r.applicantId === this.currentUser.id : true
+                            ).map(r => {
+                                const applicant = this.users.find(u => u.id === r.applicantId);
+                                return {
+                                    id: r.id,
+                                    applicantId: r.applicantId,
+                                    applicantName: applicant ? applicant.name : '未知使用者',
+                                    amount: r.amount,
+                                    date: r.date,
+                                    category: r.category,
+                                    department: r.department,
+                                    status: r.status,
+                                    description: r.description,
+                                    createdAt: r.createdAt
+                                };
+                            });
+                            this.exportToExcel(userReports, 'reports.csv');
+                        } else if (type === 'analytics') {
+                            const formattedReports = this.reports.map(r => {
+                                const applicant = this.users.find(u => u.id === r.applicantId);
+                                return {
+                                    id: r.id,
+                                    applicantId: r.applicantId,
+                                    applicantName: applicant ? applicant.name : '未知使用者',
+                                    amount: r.amount,
+                                    date: r.date,
+                                    category: r.category,
+                                    department: r.department,
+                                    status: r.status,
+                                    description: r.description,
+                                    createdAt: r.createdAt
+                                };
+                            });
+                            this.exportToExcel(formattedReports, 'analytics.csv');
+                        }
+                    });
+                });
+
+                // 關閉彈窗
+                const modalOverlay = app.querySelector('.modal-overlay');
+                if (modalOverlay) {
+                    modalOverlay.addEventListener('click', (e) => {
+                        if (e.target === modalOverlay) {
+                            this.showModal = false;
+                            this.render();
+                        }
+                    });
+                }
+
+                // 切換至註冊頁面
+                const toRegister = app.querySelector('#toRegister');
+                if (toRegister) {
+                    toRegister.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.currentView = 'register';
+                        this.render();
+                    });
+                }
+
+                // 返回登入頁面
+                const toLogin = app.querySelector('#toLogin');
+                if (toLogin) {
+                    toLogin.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        this.currentView = 'login';
+                        this.render();
+                    });
+                }
+
+                // 註冊表單提交
+                const registerForm = app.querySelector('#registerForm');
+                if (registerForm) {
+                    registerForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        const name = app.querySelector('#registerName').value;
+                        const email = app.querySelector('#registerEmail').value;
+                        const role = app.querySelector('#registerRole').value;
+                        const password = app.querySelector('#registerPassword').value;
+                        const gender = app.querySelector('#registerGender').value;
+
+                        // 表單基本驗證
+                        if (!name || !email || !password || !role || !gender) {
+                            this.showMessage('請填寫所有必要欄位');
+                            return;
+                        }
+                        if (password.length < 6) {
+                            this.showMessage('密碼至少6個字元');
+                            return;
+                        }
+                        const existingUser = this.users.find(u => u.email === email);
+                        if (existingUser) {
+                            this.showMessage('此郵箱已被註冊');
+                            return;
+                        }
+
+                        this.pendingAction = {
+                            type: 'register',
+                            data: { name, email, role, password, gender }
+                        };
+                        this.resetCaptcha();
+                        this.showCaptchaModal = true;
+                        this.render();
+                    });
+                }
+
+                // 關閉審核狀態彈窗
+                const btnCloseStatusModal = app.querySelector('#btnCloseStatusModal');
+                if (btnCloseStatusModal) {
+                    btnCloseStatusModal.addEventListener('click', () => {
+                        this.showStatusModal = false;
+                        this.render();
+                    });
+                }
+
+                // 點擊驗證圖片
+                app.querySelectorAll('.captcha-item').forEach(item => {
+                    item.addEventListener('click', () => {
+                        const imgId = parseInt(item.dataset.id, 10);
+                        const imgData = this.captchaGrid.find(img => img.id === imgId);
+                        if (imgData) {
+                            imgData.selected = !imgData.selected;
+                            // 直接切換 DOM 樣式以避免呼叫 render() 導致畫面閃爍
+                            item.classList.toggle('selected');
+                        }
+                    });
+                });
+
+                // 點擊重新整理
+                const btnCaptchaRefresh = app.querySelector('#btnCaptchaRefresh');
+                if (btnCaptchaRefresh) {
+                    btnCaptchaRefresh.addEventListener('click', () => {
+                        this.resetCaptcha();
+                        this.render();
+                    });
+                }
+
+                // 點擊取消
+                const btnCaptchaCancel = app.querySelector('#btnCaptchaCancel');
+                if (btnCaptchaCancel) {
+                    btnCaptchaCancel.addEventListener('click', () => {
+                        this.showCaptchaModal = false;
+                        this.pendingAction = null;
+                        this.render();
+                    });
+                }
+
+                // 點擊驗證
+                const btnCaptchaVerify = app.querySelector('#btnCaptchaVerify');
+                if (btnCaptchaVerify) {
+                    btnCaptchaVerify.addEventListener('click', () => {
+                        // 檢查邏輯：
+                        // 1. 所有是目標類別 (this.captchaTargetKey) 的圖片都必須被選中
+                        // 2. 所有非目標類別的圖片都不能被選中
+                        const isCorrect = this.captchaGrid.every(img => {
+                            const shouldBeSelected = img.category === this.captchaTargetKey;
+                            return img.selected === shouldBeSelected;
+                        });
+
+                        if (isCorrect) {
+                            this.showCaptchaModal = false;
+                            const action = this.pendingAction;
+                            this.pendingAction = null;
+                            this.render(); // 關閉彈窗
+
+                            if (action) {
+                                if (action.type === 'login') {
+                                    this.handleLogin(action.data.email, action.data.password);
+                                } else if (action.type === 'register') {
+                                    this.handleRegister(
+                                        action.data.name,
+                                        action.data.email,
+                                        action.data.role,
+                                        action.data.password,
+                                        action.data.gender
+                                    );
+                                }
+                            }
+                        } else {
+                            this.showMessage('驗證錯誤，請再試一次');
+                            this.resetCaptcha();
+                            this.render();
+                        }
+                    });
+                }
+            }
+
+            render() {
+                const app = document.getElementById('app');
+
+                if (app) {
+                    // 1. 登入頁面
+                    const loginEmailEl = app.querySelector('#loginEmail');
+                    if (loginEmailEl) this.loginEmailVal = loginEmailEl.value;
+
+                    // 2. 註冊頁面
+                    const regNameEl = app.querySelector('#registerName');
+                    const regEmailEl = app.querySelector('#registerEmail');
+                    const regRoleEl = app.querySelector('#registerRole');
+                    const regGenderEl = app.querySelector('#registerGender');
+                    if (regNameEl) this.regNameVal = regNameEl.value;
+                    if (regEmailEl) this.regEmailVal = regEmailEl.value;
+                    if (regRoleEl) this.regRoleVal = regRoleEl.value;
+                    if (regGenderEl) this.regGenderVal = regGenderEl.value;
+
+                    // 3. 新建報告頁面
+                    const amountEl = app.querySelector('#amount');
+                    const dateEl = app.querySelector('#date');
+                    const categoryEl = app.querySelector('#category');
+                    const deptEl = app.querySelector('#department');
+                    const descEl = app.querySelector('#description');
+                    if (amountEl) this.newReportAmountVal = amountEl.value;
+                    if (dateEl) this.newReportDateVal = dateEl.value;
+                    if (categoryEl) this.newReportCategoryVal = categoryEl.value;
+                    if (deptEl) this.newReportDepartmentVal = deptEl.value;
+                    if (descEl) this.newReportDescriptionVal = descEl.value;
+                }
+
+                if (this.currentView === 'login') {
+                    app.innerHTML = this.renderLogin();
+                } else if (this.currentView === 'register') {
+                    app.innerHTML = this.renderRegister();
+                } else if (this.currentView === 'changePassword') {
+                    app.innerHTML = this.renderChangePassword();
+                } else if (this.currentView === 'dashboard') {
+                    app.innerHTML = this.renderDashboard();
+                } else if (this.currentView === 'newReport') {
+                    app.innerHTML = this.renderNewReport();
+                } else if (this.currentView === 'reports') {
+                    app.innerHTML = this.renderReports();
+                } else if (this.currentView === 'review') {
+                    app.innerHTML = this.renderReview();
+                } else if (this.currentView === 'analytics') {
+                    app.innerHTML = this.renderAnalytics();
+                } else if (this.currentView === 'users') {
+                    app.innerHTML = this.renderUsers();
+                }
+
+                // 添加通知
+                if (this.showModal) {
+                    const modal = document.createElement('div');
+                    modal.className = 'modal-overlay';
+                    modal.innerHTML = `
+                        <div class="modal">
+                            <p class="modal-content">${this.modalMessage}</p>
+                        </div>
+                    `;
+                    app.appendChild(modal);
+                }
+
+                // 審核狀態通知自訂彈窗
+                if (this.showStatusModal) {
+                    const modal = document.createElement('div');
+                    modal.className = 'modal-overlay';
+                    modal.id = 'statusNotificationModal';
+                    modal.innerHTML = `
+                        <div class="modal" style="max-width: 500px; padding: 2rem;">
+                            <div class="modal-title" style="font-size: 20px; font-weight: 600; margin-bottom: 1rem; color: var(--primary-dark);">🔔 審核狀態通知</div>
+                            <div class="modal-content" style="line-height: 1.6; color: var(--text-primary); text-align: left; font-size: 14px; max-height: 350px; overflow-y: auto;">
+                                ${this.statusModalContent}
+                            </div>
+                            <div class="modal-buttons" style="margin-top: 1.5rem; display: flex; justify-content: flex-end;">
+                                <button class="btn-primary" id="btnCloseStatusModal" style="width: 100%; padding: 0.75rem;">我知道了</button>
+                            </div>
+                        </div>
+                    `;
+                    app.appendChild(modal);
+                }
+
+                // 九宮格驗證彈窗
+                if (this.showCaptchaModal) {
+                    const modal = document.createElement('div');
+                    modal.className = 'captcha-overlay';
+
+                    const gridHtml = this.captchaGrid.map(item => {
+                        // 根據類別選取柔和的背景色
+                        let bg = '#E3F2FD'; // car -> light blue
+                        if (item.category === 'food') bg = '#FFF3E0'; // food -> light orange
+                        if (item.category === 'insect') bg = '#E8F5E9'; // insect -> light green
+
+                        return `
+                            <div class="captcha-item ${item.selected ? 'selected' : ''}" data-id="${item.id}" style="background-color: ${bg}; display: flex; align-items: center; justify-content: center; font-size: 36px;">
+                                <span>${item.icon}</span>
+                                <div class="checkmark">✓</div>
+                            </div>
+                        `;
+                    }).join('');
+
+                    modal.innerHTML = `
+                        <div class="captcha-modal">
+                            <div class="captcha-header">
+                                <div class="captcha-title">安全驗證</div>
+                                <div class="captcha-subtitle">請選出含有 <span class="captcha-target">${this.captchaTarget}</span> 的所有圖示</div>
+                            </div>
+                            <div class="captcha-grid">
+                                ${gridHtml}
+                            </div>
+                            <div class="captcha-footer">
+                                <button class="btn-refresh" id="btnCaptchaRefresh" title="重新整理" type="button">
+                                    🔄
+                                </button>
+                                <div class="captcha-actions">
+                                    <button class="btn-secondary btn-small" id="btnCaptchaCancel" type="button" style="padding: 0.5rem 1rem;">取消</button>
+                                    <button class="btn-primary btn-small" id="btnCaptchaVerify" type="button" style="padding: 0.5rem 1rem;">驗證</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    app.appendChild(modal);
+                }
+
+                this.attachEventListeners();
+
+                if (this.currentView === 'analytics') {
+                    this.initAnalyticsCharts();
+                }
+            }
+
+            renderRegister() {
+                const name = this.regNameVal || '';
+                const email = this.regEmailVal || '';
+                const role = this.regRoleVal || 'applicant';
+                const gender = this.regGenderVal || 'M';
+
+                return `
+                    <div class="login-container">
+                        <div class="login-box">
+                            <div class="login-header">
+                                <div class="login-icon">👤</div>
+                                <h1 class="login-title">使用者註冊</h1>
+                                <p class="login-subtitle">加入公務報帳系統</p>
+                            </div>
+
+                            <form id="registerForm">
+                                <div class="form-group">
+                                    <label>選擇身分</label>
+                                    <select id="registerRole" required>
+                                        <option value="applicant" ${role === 'applicant' ? 'selected' : ''}>申請者 (預設額度 ¥1,000)</option>
+                                        <option value="manager" ${role === 'manager' ? 'selected' : ''}>主管 (預設額度 ¥50,000)</option>
+                                        <option value="admin" ${role === 'admin' ? 'selected' : ''}>系統管理者 (預設額度 ¥100,000)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>性別稱謂</label>
+                                    <select id="registerGender" required>
+                                        <option value="M" ${gender === 'M' ? 'selected' : ''}>男 (先生)</option>
+                                        <option value="F" ${gender === 'F' ? 'selected' : ''}>女 (女士)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>真實姓名</label>
+                                    <input type="text" id="registerName" placeholder="輸入姓名" value="${name}" required />
+                                </div>
+                                <div class="form-group">
+                                    <label>帳號 (電子郵箱)</label>
+                                    <input type="email" id="registerEmail" placeholder="username@company.com" value="${email}" required />
+                                </div>
+                                <div class="form-group">
+                                    <label>密碼</label>
+                                    <input type="password" id="registerPassword" placeholder="至少6個字元" minlength="6" required />
+                                </div>
+                                <button type="submit" class="btn-primary" style="width: 100%; margin-bottom: 1rem;">
+                                    註冊
+                                </button>
+                                <div style="text-align: center;">
+                                    <a href="#" id="toLogin" style="color: var(--text-secondary); text-decoration: none; font-size: 14px;">返回登入</a>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderLogin() {
+                return `
+                    <div class="login-container">
+                        <div class="login-box">
+                            <div class="login-header">
+                                <div class="login-icon">📊</div>
+                                <h1 class="login-title">公務報帳系統</h1>
+                                <p class="login-subtitle">高效管理 • 透明審核</p>
+                            </div>
+
+                            <form id="loginForm">
+                                <div class="form-group">
+                                    <label>郵箱</label>
+                                    <input type="email" id="loginEmail" placeholder="user@company.com" value="${this.loginEmailVal || ''}" required />
+                                </div>
+                                <div class="form-group">
+                                    <label>密碼</label>
+                                    <input type="password" id="loginPassword" placeholder="輸入密碼" required />
+                                </div>
+                                <button type="submit" class="btn-primary" style="width: 100%;">
+                                    登入
+                                </button>
+                                <div style="text-align: center; margin-top: 1.5rem;">
+                                    <span style="color: var(--text-secondary); font-size: 14px;">沒有帳號？</span>
+                                    <a href="#" id="toRegister" style="color: var(--primary-color); text-decoration: none; font-size: 14px; font-weight: 500;">立即註冊</a>
+                                </div>
+                            </form>
+
+                            <div class="demo-accounts">
+                                <strong>測試帳號：</strong>
+                                <p>• 申請者: applicant@company.com</p>
+                                <p>• 主管: manager@company.com</p>
+                                <p>• 管理者: admin@company.com</p>
+                                <p style="margin-top: 0.5rem; font-style: italic;">密碼皆為: 123456</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderChangePassword() {
+                return `
+                    <div class="login-container">
+                        <div class="login-box">
+                            <h2>密碼過期 - 請更新密碼</h2>
+                            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 14px;">
+                                您已登入超過5次，請更新密碼以確保帳號安全
+                            </p>
+
+                            <form id="changePasswordForm">
+                                <div class="form-group">
+                                    <label>新密碼</label>
+                                    <input type="password" id="newPassword" placeholder="至少6個字符" required />
+                                </div>
+                                <button type="submit" class="btn-primary" style="width: 100%; margin-bottom: 0.5rem;">
+                                    更新密碼
+                                </button>
+                            </form>
+                            <button class="btn-secondary" data-action="logout" style="width: 100%;">
+                                登出
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderDashboard() {
+                const userReports = this.reports.filter(r =>
+                    this.currentUser.role === 'applicant' ? r.applicantId === this.currentUser.id : true
+                );
+                const role = this.currentUser.role === 'applicant' ? '申請者' :
+                    this.currentUser.role === 'manager' ? '主管' : '系統管理員';
+                const lastName = this.currentUser.name ? this.currentUser.name.charAt(0) : '';
+                const genderTitle = this.currentUser.gender === 'F' ? '女士' : '先生';
+
+                return `
+                    <div class="container dashboard">
+                        <div class="page-header">
+                            <div>
+                                <h1>歡迎！${lastName}${genderTitle}</h1>
+                                <p class="welcome-text" style="display: flex; align-items: center; gap: 8px;">
+                                    <span>${role}</span>
+                                    <span class="cloud-sync-status"><span class="sync-dot"></span> 雲端數據已同步</span>
+                                </p>
+                            </div>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <button class="btn-secondary" data-action="logout">登出</button>
+                                <button class="btn-danger btn-small" data-action="delete-self">註銷帳號</button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-auto">
+                            <div class="stat-card">
+                                <p class="stat-label">額度餘額</p>
+                                <p class="stat-value">¥${this.currentUser.budget - this.currentUser.spent}</p>
+                                <p class="stat-label">已使用: ¥${this.currentUser.spent} / ¥${this.currentUser.budget}</p>
+                            </div>
+                            <div class="stat-card">
+                                <p class="stat-label">待審批</p>
+                                <p class="stat-value">${userReports.filter(r => r.status === 'pending').length}</p>
+                            </div>
+                            <div class="stat-card">
+                                <p class="stat-label">已通過</p>
+                                <p class="stat-value">${userReports.filter(r => r.status === 'approved').length}</p>
+                            </div>
+                        </div>
+
+                        <div class="nav-buttons">
+                            ${this.currentUser.role === 'applicant' ? `<button class="btn-primary" data-view="newReport">新建報告</button>` : ''}
+                            <button class="btn-secondary" data-view="reports">我的報告</button>
+                            ${this.currentUser.role !== 'applicant' ? `<button class="btn-secondary" data-view="review">待審核</button>` : ''}
+                            <button class="btn-secondary" data-view="analytics">數據分析</button>
+                            ${this.currentUser.role === 'admin' ? `
+                                <button class="btn-secondary" data-view="users">用戶管理</button>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderNewReport() {
+                return `
+                    <div class="container">
+                        <a class="back-link" data-action="back" data-view="dashboard">← 返回</a>
+
+                        <div class="card">
+                            <h2>新建報帳申請</h2>
+
+                            <form id="newReportForm">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>金額 (¥)</label>
+                                        <input type="number" id="amount" placeholder="0.00" value="${this.newReportAmountVal || ''}" required />
+                                    </div>
+                                    <div class="form-group">
+                                        <label>日期</label>
+                                        <input type="date" id="date" value="${this.newReportDateVal || new Date().toISOString().split('T')[0]}" required />
+                                    </div>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>類別</label>
+                                    <select id="category">
+                                        <option ${this.newReportCategoryVal === '辦公用品' ? 'selected' : ''}>辦公用品</option>
+                                        <option ${this.newReportCategoryVal === '出差費用' ? 'selected' : ''}>出差費用</option>
+                                        <option ${this.newReportCategoryVal === '會議費用' ? 'selected' : ''}>會議費用</option>
+                                        <option ${this.newReportCategoryVal === '培訓費用' ? 'selected' : ''}>培訓費用</option>
+                                        <option ${this.newReportCategoryVal === '其他' ? 'selected' : ''}>其他</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group">
+                                    <label>負責單位</label>
+                                    <input type="text" id="department" placeholder="如：市場部" value="${this.newReportDepartmentVal || ''}" required />
+                                </div>
+
+                                <div class="form-group">
+                                    <label>描述</label>
+                                    <textarea id="description" placeholder="請簡要描述報帳事由" required>${this.newReportDescriptionVal || ''}</textarea>
+                                </div>
+
+                                <div style="padding: 1rem; background: var(--bg-secondary); border-radius: 8px; text-align: center; cursor: pointer; margin-bottom: 1.5rem;">
+                                    <p>上傳相關文件（發票、收據等）</p>
+                                    <p style="font-size: 12px; color: var(--text-tertiary); margin: 0.5rem 0 0 0;">點擊或拖拽上傳</p>
+                                </div>
+
+                                <button type="submit" class="btn-primary" style="width: 100%;">提交申請</button>
+                            </form>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderReports() {
+                let userReports = [];
+                if (this.currentUser.role === 'applicant') {
+                    // 申請者檢視自己歷史申請記錄
+                    userReports = this.reports.filter(r => r.applicantId === this.currentUser.id);
+                } else if (this.currentUser.role === 'manager') {
+                    // 主管可檢視自己歷史申請/核准(審核)紀錄
+                    userReports = this.reports.filter(r =>
+                        r.applicantId === this.currentUser.id || r.reviewerId === this.currentUser.id
+                    );
+                } else {
+                    // admin 檢視全部
+                    userReports = [...this.reports];
+                }
+
+                // 依年份將報帳紀錄分組
+                const reportsByYear = {};
+                userReports.forEach(report => {
+                    const year = report.date ? report.date.split('-')[0] : '其他年份';
+                    if (!reportsByYear[year]) {
+                        reportsByYear[year] = [];
+                    }
+                    reportsByYear[year].push(report);
+                });
+
+                // 年份由新到舊排序
+                const sortedYears = Object.keys(reportsByYear).sort((a, b) => b.localeCompare(a));
+
+                // 年份內部的報告依日期由新到舊排序
+                sortedYears.forEach(year => {
+                    reportsByYear[year].sort((a, b) => new Date(b.date) - new Date(a.date));
+                });
+
+                let contentHtml = '';
+                if (sortedYears.length > 0) {
+                    contentHtml = sortedYears.map(year => {
+                        const yearReports = reportsByYear[year];
+                        const listHtml = yearReports.map(report => {
+                            const applicant = this.users.find(u => u.id === report.applicantId);
+                            const applicantName = applicant ? applicant.name : '未知使用者';
+                            const showApplicant = this.currentUser.role !== 'applicant';
+
+                            // 標示此紀錄是「我自己申請的」還是「我核准的/他人申請的」
+                            let badgeRoleHtml = '';
+                            if (this.currentUser.role === 'manager') {
+                                if (report.applicantId === this.currentUser.id) {
+                                    badgeRoleHtml = `<span class="badge" style="background: #E0F7FA; color: #006064; margin-left: 0.5rem;">個人申請</span>`;
+                                } else {
+                                    badgeRoleHtml = `<span class="badge" style="background: #EDE7F6; color: #311B92; margin-left: 0.5rem;">主管核准</span>`;
+                                }
+                            }
+
+                            return `
+                                <div class="report-item">
+                                    <div>
+                                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                                            <span style="font-size: 16px; font-weight: 600;">¥${report.amount}</span>
+                                            <span class="badge ${report.status === 'approved' ? 'badge-approved' : report.status === 'pending' ? 'badge-pending' : 'badge-rejected'}">
+                                                ${report.status === 'approved' ? '✓ 已通過' : report.status === 'pending' ? '⏳ 審核中' : '✕ 已退回'}
+                                            </span>
+                                            ${badgeRoleHtml}
+                                        </div>
+                                        ${showApplicant ? `
+                                        <div class="user-info" style="margin-bottom: 0.5rem; gap: 0.5rem; align-items: center;">
+                                            <div class="avatar" style="width: 24px; height: 24px; font-size: 11px;">${applicantName.charAt(0)}</div>
+                                            <span style="font-size: 13px; font-weight: 500; color: var(--text-secondary);">申請人: ${applicantName}</span>
+                                        </div>` : ''}
+                                        <p class="report-meta">${report.category} • ${report.date} • ${report.department}</p>
+                                        <p class="report-meta">${report.description}</p>
+                                        ${report.comments ? `<p class="report-meta" style="color: var(--primary-dark); font-style: italic;">💬 審核意見: "${report.comments}"</p>` : ''}
+                                    </div>
+                                    <button class="btn-secondary btn-small" onclick="alert('報告詳情\\n\\n申請人: ${applicantName}\\n金額: ¥${report.amount}\\n日期: ${report.date}\\n類別: ${report.category}\\n部門: ${report.department}\\n狀態: ${report.status}\\n描述: ${report.description}\\n審核意見: ${report.comments || '無'}')">查看詳情</button>
+                                </div>
+                            `;
+                        }).join('');
+
+                        return `
+                            <div class="year-section" style="margin-bottom: 2.5rem;">
+                                <h3 class="year-heading" style="font-size: 20px; font-weight: 600; color: var(--primary-dark); border-left: 4px solid var(--primary-color); padding-left: 10px; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between;">
+                                    <span>${year} 年</span>
+                                    <span style="font-size: 13px; color: var(--text-secondary); font-weight: 400;">(${yearReports.length} 筆紀錄)</span>
+                                </h3>
+                                <div class="report-list">
+                                    ${listHtml}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    contentHtml = '<div class="empty-state"><p>沒有報告記錄</p></div>';
+                }
+
+                return `
+                    <div class="container">
+                        <a class="back-link" data-action="back" data-view="dashboard">← 返回</a>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h2>報帳記錄</h2>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn-secondary btn-small" data-view="analytics">數據分析</button>
+                                <button class="btn-secondary btn-small" data-export="reports">匯出 Excel</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            ${contentHtml}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderReview() {
+                const pendingReports = this.reports.filter(r => r.status === 'pending');
+
+                return `
+                    <div class="container">
+                        <a class="back-link" data-action="back" data-view="dashboard">← 返回</a>
+
+                        <h2>待審核報告 (${pendingReports.length})</h2>
+
+                        <div class="report-list">
+                            ${pendingReports.length > 0 ? pendingReports.map(report => {
+                    const applicant = this.users.find(u => u.id === report.applicantId);
+                    return `
+                                    <div class="review-item">
+                                        <div>
+                                            <div class="user-info">
+                                                <div class="avatar">${applicant.name.charAt(0)}</div>
+                                                <div class="user-details">
+                                                    <p class="user-name">${applicant.name}</p>
+                                                    <p class="user-email">申請金額: ¥${report.amount}</p>
+                                                </div>
+                                            </div>
+                                            <p>${report.description}</p>
+                                            <p class="report-meta">${report.category} • ${report.date}</p>
+                                        </div>
+                                        <div class="review-buttons">
+                                            <button class="btn-success" data-approve="${report.id}">✓ 通過</button>
+                                            <button class="btn-danger" data-reject="${report.id}">✕ 退回</button>
+                                        </div>
+                                    </div>
+                                `;
+                }).join('') : '<div class="empty-state"><p>沒有待審核的報告</p></div>'}
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderAnalytics() {
+                const targetReports = this.currentUser.role === 'applicant' ? this.reports.filter(r => r.applicantId === this.currentUser.id) : this.reports;
+                const totalAmount = targetReports.reduce((a, b) => a + b.amount, 0);
+                const approvedAmount = targetReports
+                    .filter(r => r.status === 'approved')
+                    .reduce((a, b) => a + b.amount, 0);
+                const reportCount = targetReports.length;
+
+                const categoryTotal = {};
+                targetReports.forEach(r => {
+                    categoryTotal[r.category] = (categoryTotal[r.category] || 0) + r.amount;
+                });
+
+                const categoryRows = Object.entries(categoryTotal).map(([cat, amt]) => {
+                    const percentage = totalAmount > 0 ? ((amt / totalAmount) * 100).toFixed(1) : '0.0';
+                    return `
+                        <tr>
+                            <td style="padding: 0.75rem; border-bottom: 0.5px solid var(--border-color);">${cat}</td>
+                            <td style="padding: 0.75rem; border-bottom: 0.5px solid var(--border-color); text-align: right; font-weight: 500;">¥${amt.toFixed(2)}</td>
+                            <td style="padding: 0.75rem; border-bottom: 0.5px solid var(--border-color); text-align: right; color: var(--text-secondary);">${percentage}%</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="container">
+                        <a class="back-link" data-action="back" data-view="dashboard">← 返回</a>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h2>報帳數據分析中心</h2>
+                            <button class="btn-secondary btn-small" data-export="analytics">匯出報帳明細</button>
+                        </div>
+
+                        <div class="grid grid-auto">
+                            <div class="stat-card">
+                                <p class="stat-label">累積申報總額</p>
+                                <p class="stat-value">¥${totalAmount.toFixed(2)}</p>
+                            </div>
+                            <div class="stat-card">
+                                <p class="stat-label">已核准通過總額</p>
+                                <p class="stat-value" style="color: var(--success);">¥${approvedAmount.toFixed(2)}</p>
+                            </div>
+                            <div class="stat-card">
+                                <p class="stat-label">申報報告數量</p>
+                                <p class="stat-value" style="color: var(--info);">${reportCount} 件</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-2" style="margin-top: 1.5rem;">
+                            <div class="chart-container" style="display: flex; flex-direction: column;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h3 style="margin: 0; font-size: 16px; color: var(--primary-dark);">報帳趨勢分析</h3>
+                                    <div style="display: flex; gap: 0.25rem; background: var(--bg-secondary); padding: 2px; border-radius: 6px;">
+                                        <button id="btnTrendMonth" class="btn-small" style="padding: 4px 8px; font-size: 12px; background: var(--primary-color); color: white; border-radius: 4px;">月度</button>
+                                        <button id="btnTrendQuarter" class="btn-small" style="padding: 4px 8px; font-size: 12px; background: transparent; color: var(--text-secondary); border-radius: 4px;">季度</button>
+                                    </div>
+                                </div>
+                                <div style="flex: 1; position: relative; min-height: 250px;">
+                                    <canvas id="trendChart"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="chart-container" style="display: flex; flex-direction: column;">
+                                <h3 style="margin-bottom: 1rem; font-size: 16px; color: var(--primary-dark);">費用類別分佈</h3>
+                                <div style="flex: 1; position: relative; min-height: 250px; display: flex; align-items: center; justify-content: center;">
+                                    <canvas id="categoryChart" style="max-height: 250px; max-width: 250px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card" style="margin-top: 1.5rem; padding: 1.5rem;">
+                            <h3 style="margin-bottom: 1rem; font-size: 18px; color: var(--primary-dark);">類別數據統整</h3>
+                            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                                <thead>
+                                    <tr style="background: var(--bg-secondary); text-align: left;">
+                                        <th style="padding: 0.75rem; font-weight: 600; color: var(--text-primary);">類別</th>
+                                        <th style="padding: 0.75rem; font-weight: 600; color: var(--text-primary); text-align: right;">報帳總額</th>
+                                        <th style="padding: 0.75rem; font-weight: 600; color: var(--text-primary); text-align: right;">比例</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${categoryRows || '<tr><td colspan="3" style="text-align:center; padding: 2rem; color: var(--text-secondary);">暫無申報數據</td></tr>'}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderUsers() {
+                return `
+                    <div class="container">
+                        <a class="back-link" data-action="back" data-view="dashboard">← 返回</a>
+
+                        <h2>用戶管理</h2>
+
+                        <div class="report-list">
+                            ${this.users.map(user => `
+                                <div class="report-item">
+                                    <div class="user-info" style="margin-bottom: 0;">
+                                        <div class="avatar">${user.name.charAt(0)}</div>
+                                        <div class="user-details">
+                                            <p class="user-name">${user.name}</p>
+                                            <p class="user-email">${user.email}</p>
+                                            <p class="report-meta">
+                                                額度: ¥${user.budget} | 角色: ${user.role === 'applicant' ? '申請者' : user.role === 'manager' ? '主管' : '管理員'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div style="display: flex; gap: 0.5rem; flex-direction: column; min-width: 120px;">
+                                        <button class="btn-secondary btn-small" data-edit-user="${user.id}">調整帳號</button>
+                                        <button class="btn-danger btn-small" data-delete-user="${user.id}">註銷帳號</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            initAnalyticsCharts() {
+                if (typeof Chart === 'undefined') {
+                    setTimeout(() => this.initAnalyticsCharts(), 100);
+                    return;
+                }
+
+                const trendCtx = document.getElementById('trendChart');
+                const categoryCtx = document.getElementById('categoryChart');
+                if (!trendCtx || !categoryCtx) return;
+
+                const targetReports = this.currentUser.role === 'applicant' ? this.reports.filter(r => r.applicantId === this.currentUser.id) : this.reports;
+
+                const catData = {};
+                targetReports.forEach(r => {
+                    catData[r.category] = (catData[r.category] || 0) + r.amount;
+                });
+
+                const monthData = {};
+                targetReports.forEach(r => {
+                    const month = r.date.substring(0, 7);
+                    monthData[month] = (monthData[month] || 0) + r.amount;
+                });
+                const sortedMonths = Object.keys(monthData).sort();
+                const monthValues = sortedMonths.map(m => monthData[m]);
+
+                const quarterData = {};
+                targetReports.forEach(r => {
+                    const parts = r.date.split('-');
+                    const year = parts[0];
+                    const month = parseInt(parts[1], 10);
+                    let quarter = 'Q1';
+                    if (month >= 4 && month <= 6) quarter = 'Q2';
+                    else if (month >= 7 && month <= 9) quarter = 'Q3';
+                    else if (month >= 10 && month <= 12) quarter = 'Q4';
+
+                    const qKey = `${year}-${quarter}`;
+                    quarterData[qKey] = (quarterData[qKey] || 0) + r.amount;
+                });
+                const sortedQuarters = Object.keys(quarterData).sort();
+                const quarterValues = sortedQuarters.map(q => quarterData[q]);
+
+                const primaryColor = '#D9926E';
+                const chartColors = [
+                    '#D9926E',
+                    '#8B4513',
+                    '#E8D4C8',
+                    '#4CAF50',
+                    '#2196F3',
+                    '#FFC107'
+                ];
+
+                const categoryChart = new Chart(categoryCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(catData),
+                        datasets: [{
+                            data: Object.values(catData),
+                            backgroundColor: chartColors.slice(0, Object.keys(catData).length),
+                            borderWidth: 1,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    boxWidth: 12,
+                                    font: { size: 11 }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                let currentTrendType = 'month';
+                const trendChart = new Chart(trendCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedMonths.length > 0 ? sortedMonths : ['無數據'],
+                        datasets: [{
+                            label: '報帳總額 (¥)',
+                            data: monthValues.length > 0 ? monthValues : [0],
+                            backgroundColor: 'rgba(217, 146, 110, 0.8)',
+                            borderColor: primaryColor,
+                            borderWidth: 1,
+                            borderRadius: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                grid: { color: '#E8D4C8' },
+                                ticks: { font: { size: 10 } }
+                            },
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { size: 10 } }
+                            }
+                        },
+                        plugins: {
+                            legend: { display: false }
+                        }
+                    }
+                });
+
+                const btnTrendMonth = document.getElementById('btnTrendMonth');
+                const btnTrendQuarter = document.getElementById('btnTrendQuarter');
+
+                if (btnTrendMonth && btnTrendQuarter) {
+                    btnTrendMonth.addEventListener('click', () => {
+                        if (currentTrendType === 'month') return;
+                        currentTrendType = 'month';
+
+                        btnTrendMonth.style.background = primaryColor;
+                        btnTrendMonth.style.color = 'white';
+                        btnTrendQuarter.style.background = 'transparent';
+                        btnTrendQuarter.style.color = 'var(--text-secondary)';
+
+                        trendChart.data.labels = sortedMonths.length > 0 ? sortedMonths : ['無數據'];
+                        trendChart.data.datasets[0].data = monthValues.length > 0 ? monthValues : [0];
+                        trendChart.update();
+                    });
+
+                    btnTrendQuarter.addEventListener('click', () => {
+                        if (currentTrendType === 'quarter') return;
+                        currentTrendType = 'quarter';
+
+                        btnTrendQuarter.style.background = primaryColor;
+                        btnTrendQuarter.style.color = 'white';
+                        btnTrendMonth.style.background = 'transparent';
+                        btnTrendMonth.style.color = 'var(--text-secondary)';
+
+                        trendChart.data.labels = sortedQuarters.length > 0 ? sortedQuarters : ['無數據'];
+                        trendChart.data.datasets[0].data = quarterValues.length > 0 ? quarterValues : [0];
+                        trendChart.update();
+                    });
+                }
+            }
+        }
+
+        // 啟動應用
+        window.addEventListener('DOMContentLoaded', () => {
+            new ExpenseReportApp();
+        });
+    </script>
+</body>
+
+</html>
